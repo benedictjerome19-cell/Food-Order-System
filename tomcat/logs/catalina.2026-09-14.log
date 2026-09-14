@@ -1099,3 +1099,4 @@
 14-Sep-2026 11:12:46.768 WARNING [localhost-startStop-1] org.apache.catalina.loader.WebappClassLoaderBase.clearReferencesJdbc The web application [benedictjeromemart] registered the JDBC driver [org.h2.Driver] but failed to unregister it when the web application was stopped. To prevent a memory leak, the JDBC Driver has been forcibly unregistered.
 14-Sep-2026 11:12:46.775 INFO [main] org.apache.coyote.AbstractProtocol.stop Stopping ProtocolHandler ["http-nio-8080"]
 14-Sep-2026 11:12:46.782 INFO [main] org.apache.coyote.AbstractProtocol.destroy Destroying ProtocolHandler ["http-nio-8080"]
+14-Sep-2026 18:45:26.423 SEVERE [main] org.apache.catalina.startup.Catalina.stopServer Could not contact [localhost:8005] (base port [8005] and offset [0]). Tomcat may not be running.
