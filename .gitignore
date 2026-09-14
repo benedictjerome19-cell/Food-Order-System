@@ -1,0 +1,13 @@
+﻿target/
+*.mv.db
+*.trace.db
+data/
+src/main/resources/config.properties
+.idea/
+*.iml
+.vscode/
+*.classpath
+*.project
+.settings/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,12 @@
+package com.yourname.yournameeats.dao;
+
+import java.util.List;
+
+import com.yourname.yournameeats.model.Review;
+
+public interface ReviewDAO {
+    /** One review per (restaurant, user) — re-reviewing updates the existing row. */
+    Review upsert(int restaurantId, int userId, int rating, String comment);
+    List<Review> findByRestaurantId(int restaurantId);
+    double findAverageRating(int restaurantId);
+}

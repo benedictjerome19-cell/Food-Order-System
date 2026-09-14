@@ -1,0 +1,50 @@
+05-Sep-2026 18:30:00.578 SEVERE [main] org.apache.catalina.startup.Catalina.stopServer Could not contact [localhost:8005] (base port [8005] and offset [0]). Tomcat may not be running.
+05-Sep-2026 18:30:21.303 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Server version name:   Apache Tomcat/8.5.96
+05-Sep-2026 18:30:21.307 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Server built:          Nov 10 2023 14:56:59 UTC
+05-Sep-2026 18:30:21.307 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Server version number: 8.5.96.0
+05-Sep-2026 18:30:21.307 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log OS Name:               Windows 11
+05-Sep-2026 18:30:21.307 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log OS Version:            10.0
+05-Sep-2026 18:30:21.308 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Architecture:          amd64
+05-Sep-2026 18:30:21.308 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Java Home:             C:\Program Files\Eclipse Adoptium\jdk-17.0.20.8-hotspot
+05-Sep-2026 18:30:21.308 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log JVM Version:           17.0.20+8
+05-Sep-2026 18:30:21.310 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log JVM Vendor:            Eclipse Adoptium
+05-Sep-2026 18:30:21.310 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log CATALINA_BASE:         D:\benedictmart\benedictmart\jerome_zom\tomcat
+05-Sep-2026 18:30:21.311 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log CATALINA_HOME:         D:\benedictmart\benedictmart\jerome_zom\tomcat
+05-Sep-2026 18:30:21.311 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: --add-opens=java.base/java.lang=ALL-UNNAMED
+05-Sep-2026 18:30:21.311 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: --add-opens=java.base/java.io=ALL-UNNAMED
+05-Sep-2026 18:30:21.312 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: --add-opens=java.base/java.util=ALL-UNNAMED
+05-Sep-2026 18:30:21.312 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: --add-opens=java.base/java.util.concurrent=ALL-UNNAMED
+05-Sep-2026 18:30:21.312 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: --add-opens=java.rmi/sun.rmi.transport=ALL-UNNAMED
+05-Sep-2026 18:30:21.312 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Djava.util.logging.config.file=D:\benedictmart\benedictmart\jerome_zom\tomcat\conf\logging.properties
+05-Sep-2026 18:30:21.312 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Djava.util.logging.manager=org.apache.juli.ClassLoaderLogManager
+05-Sep-2026 18:30:21.313 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Djdk.tls.ephemeralDHKeySize=2048
+05-Sep-2026 18:30:21.313 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Djava.protocol.handler.pkgs=org.apache.catalina.webresources
+05-Sep-2026 18:30:21.313 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Dignore.endorsed.dirs=
+05-Sep-2026 18:30:21.314 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Dcatalina.base=D:\benedictmart\benedictmart\jerome_zom\tomcat
+05-Sep-2026 18:30:21.314 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Dcatalina.home=D:\benedictmart\benedictmart\jerome_zom\tomcat
+05-Sep-2026 18:30:21.314 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Djava.io.tmpdir=D:\benedictmart\benedictmart\jerome_zom\tomcat\temp
+05-Sep-2026 18:30:21.314 INFO [main] org.apache.catalina.core.AprLifecycleListener.lifecycleEvent Loaded Apache Tomcat Native library [1.3.8] using APR version [1.7.6].
+05-Sep-2026 18:30:21.314 INFO [main] org.apache.catalina.core.AprLifecycleListener.lifecycleEvent APR capabilities: IPv6 [true], sendfile [true], accept filters [false], random [true], UDS [{4}].
+05-Sep-2026 18:30:21.314 INFO [main] org.apache.catalina.core.AprLifecycleListener.lifecycleEvent APR/OpenSSL configuration: useAprConnector [false], useOpenSSL [true]
+05-Sep-2026 18:30:21.350 INFO [main] org.apache.catalina.core.AprLifecycleListener.initializeSSL OpenSSL successfully initialized [OpenSSL 3.0.21 9 Jun 2026]
+05-Sep-2026 18:30:21.406 INFO [main] org.apache.coyote.AbstractProtocol.init Initializing ProtocolHandler ["http-nio-8080"]
+05-Sep-2026 18:30:21.445 INFO [main] org.apache.catalina.startup.Catalina.load Initialization processed in 766 ms
+05-Sep-2026 18:30:21.518 INFO [main] org.apache.catalina.core.StandardService.startInternal Starting service [Catalina]
+05-Sep-2026 18:30:21.519 INFO [main] org.apache.catalina.core.StandardEngine.startInternal Starting Servlet engine: [Apache Tomcat/8.5.96]
+05-Sep-2026 18:30:21.567 INFO [localhost-startStop-1] org.apache.catalina.startup.HostConfig.deployWAR Deploying web application archive [D:\benedictmart\benedictmart\jerome_zom\tomcat\webapps\benedictjeromemart.war]
+05-Sep-2026 18:30:22.184 WARNING [localhost-startStop-1] org.apache.tomcat.util.descriptor.web.WebXml.setVersion Unknown version string [4.0]. Default version will be used.
+05-Sep-2026 18:30:23.045 INFO [localhost-startStop-1] org.apache.jasper.servlet.TldScanner.scanJars At least one JAR was scanned for TLDs yet contained no TLDs. Enable debug logging for this logger for a complete list of JARs that were scanned but no TLDs were found in them. Skipping unneeded JARs during scanning can improve startup time and JSP compilation time.
+05-Sep-2026 18:30:28.177 WARNING [localhost-startStop-1] org.apache.catalina.util.SessionIdGeneratorBase.createSecureRandom Creation of SecureRandom instance for session ID generation using [SHA1PRNG] took [107] milliseconds.
+05-Sep-2026 18:30:28.207 INFO [localhost-startStop-1] org.apache.catalina.startup.HostConfig.deployWAR Deployment of web application archive [D:\benedictmart\benedictmart\jerome_zom\tomcat\webapps\benedictjeromemart.war] has finished in [6,640] ms
+05-Sep-2026 18:30:28.209 INFO [localhost-startStop-1] org.apache.catalina.startup.HostConfig.deployDirectory Deploying web application directory [D:\benedictmart\benedictmart\jerome_zom\tomcat\webapps\docs]
+05-Sep-2026 18:30:28.252 INFO [localhost-startStop-1] org.apache.catalina.startup.HostConfig.deployDirectory Deployment of web application directory [D:\benedictmart\benedictmart\jerome_zom\tomcat\webapps\docs] has finished in [43] ms
+05-Sep-2026 18:30:28.252 INFO [localhost-startStop-1] org.apache.catalina.startup.HostConfig.deployDirectory Deploying web application directory [D:\benedictmart\benedictmart\jerome_zom\tomcat\webapps\examples]
+05-Sep-2026 18:30:29.069 INFO [localhost-startStop-1] org.apache.catalina.startup.HostConfig.deployDirectory Deployment of web application directory [D:\benedictmart\benedictmart\jerome_zom\tomcat\webapps\examples] has finished in [817] ms
+05-Sep-2026 18:30:29.070 INFO [localhost-startStop-1] org.apache.catalina.startup.HostConfig.deployDirectory Deploying web application directory [D:\benedictmart\benedictmart\jerome_zom\tomcat\webapps\host-manager]
+05-Sep-2026 18:30:29.119 INFO [localhost-startStop-1] org.apache.catalina.startup.HostConfig.deployDirectory Deployment of web application directory [D:\benedictmart\benedictmart\jerome_zom\tomcat\webapps\host-manager] has finished in [48] ms
+05-Sep-2026 18:30:29.119 INFO [localhost-startStop-1] org.apache.catalina.startup.HostConfig.deployDirectory Deploying web application directory [D:\benedictmart\benedictmart\jerome_zom\tomcat\webapps\manager]
+05-Sep-2026 18:30:29.159 INFO [localhost-startStop-1] org.apache.catalina.startup.HostConfig.deployDirectory Deployment of web application directory [D:\benedictmart\benedictmart\jerome_zom\tomcat\webapps\manager] has finished in [40] ms
+05-Sep-2026 18:30:29.160 INFO [localhost-startStop-1] org.apache.catalina.startup.HostConfig.deployDirectory Deploying web application directory [D:\benedictmart\benedictmart\jerome_zom\tomcat\webapps\ROOT]
+05-Sep-2026 18:30:29.210 INFO [localhost-startStop-1] org.apache.catalina.startup.HostConfig.deployDirectory Deployment of web application directory [D:\benedictmart\benedictmart\jerome_zom\tomcat\webapps\ROOT] has finished in [50] ms
+05-Sep-2026 18:30:29.214 INFO [main] org.apache.coyote.AbstractProtocol.start Starting ProtocolHandler ["http-nio-8080"]
+05-Sep-2026 18:30:29.293 INFO [main] org.apache.catalina.startup.Catalina.start Server startup in 7846 ms
