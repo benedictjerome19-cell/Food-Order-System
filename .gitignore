@@ -11,3 +11,7 @@ src/main/resources/config.properties
 .settings/
 .DS_Store
 Thumbs.db
+
+tomcat/
+target/
+*.log

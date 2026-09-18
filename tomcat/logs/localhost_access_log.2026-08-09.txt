@@ -1,2 +1,0 @@
-0:0:0:0:0:0:0:1 - - [09/Aug/2026:12:27:05 +0530] "GET /benedictjeromemart/register.jsp HTTP/1.1" 404 765
-0:0:0:0:0:0:0:1 - - [09/Aug/2026:12:27:05 +0530] "GET /favicon.ico HTTP/1.1" 200 21630
