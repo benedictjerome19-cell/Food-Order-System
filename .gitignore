@@ -15,3 +15,5 @@ Thumbs.db
 tomcat/
 target/
 *.log
+
+data/
