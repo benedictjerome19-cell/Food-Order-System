@@ -1,0 +1,594 @@
+
+=== src\main\resources\config.properties ===
+# BenedictJeromeMart database configuration
+# This file is gitignored - never commit credentials
+db.url=jdbc:h2:D:/benedictmart/benedictmart/jerome_zom/data/benedictjeromemart;AUTO_SERVER=TRUE
+db.username=sa
+db.password=REDACTED
+db.pool.size=10
+
+=== src\main\resources\schema.sql ===
+-- BenedictJeromeMart — Full Schema (idempotent, H2-compatible)
+
+CREATE TABLE IF NOT EXISTS users (
+    id            INT AUTO_INCREMENT PRIMARY KEY,
+    name          VARCHAR(120) NOT NULL,
+    email         VARCHAR(200) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    role          VARCHAR(30)  NOT NULL DEFAULT 'CUSTOMER',
+    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS restaurants (
+    id           INT AUTO_INCREMENT PRIMARY KEY,
+    owner_id     INT          NOT NULL,
+    name         VARCHAR(200) NOT NULL,
+    cuisine_type VARCHAR(100),
+    address      VARCHAR(300),
+    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_rest_owner FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS menu_items (
+    id            INT AUTO_INCREMENT PRIMARY KEY,
+    restaurant_id INT            NOT NULL,
+    name          VARCHAR(200)   NOT NULL,
+    description   VARCHAR(500),
+    price         DECIMAL(10, 2) NOT NULL,
+    stock_qty     INT            NOT NULL DEFAULT 0,
+    category      VARCHAR(100),
+    image_url     VARCHAR(500),
+    available     BOOLEAN        NOT NULL DEFAULT TRUE,
+    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_item_rest FOREIGN KEY (restaurant_id) REFERENCES restaurants(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS cart_items (
+    id           INT AUTO_INCREMENT PRIMARY KEY,
+    user_id      INT NOT NULL,
+    menu_item_id INT NOT NULL,
+    quantity     INT NOT NULL DEFAULT 1,
+    CONSTRAINT fk_cart_user FOREIGN KEY (user_id)      REFERENCES users(id)      ON DELETE CASCADE,
+    CONSTRAINT fk_cart_item FOREIGN KEY (menu_item_id) REFERENCES menu_items(id) ON DELETE CASCADE,
+    CONSTRAINT uq_cart      UNIQUE (user_id, menu_item_id)
+);
+
+CREATE TABLE IF NOT EXISTS orders (
+    id            INT AUTO_INCREMENT PRIMARY KEY,
+    buyer_id      INT            NOT NULL,
+    restaurant_id INT            NOT NULL,
+    status        VARCHAR(30)    NOT NULL DEFAULT 'PENDING',
+    total_amount  DECIMAL(10, 2) NOT NULL,
+    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_order_buyer FOREIGN KEY (buyer_id)      REFERENCES users(id)       ON DELETE CASCADE,
+    CONSTRAINT fk_order_rest  FOREIGN KEY (restaurant_id) REFERENCES restaurants(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS order_items (
+    id           INT AUTO_INCREMENT PRIMARY KEY,
+    order_id     INT            NOT NULL,
+    menu_item_id INT            NOT NULL,
+    quantity     INT            NOT NULL,
+    unit_price   DECIMAL(10, 2) NOT NULL,
+    CONSTRAINT fk_oi_order FOREIGN KEY (order_id)     REFERENCES orders(id)     ON DELETE CASCADE,
+    CONSTRAINT fk_oi_item  FOREIGN KEY (menu_item_id) REFERENCES menu_items(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS reviews (
+    id           INT AUTO_INCREMENT PRIMARY KEY,
+    order_id     INT          NOT NULL,
+    buyer_id     INT          NOT NULL,
+    menu_item_id INT          NOT NULL,
+    rating       INT          NOT NULL CHECK (rating BETWEEN 1 AND 5),
+    comment      VARCHAR(1000),
+    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_rev_order  FOREIGN KEY (order_id)     REFERENCES orders(id)     ON DELETE CASCADE,
+    CONSTRAINT fk_rev_buyer  FOREIGN KEY (buyer_id)     REFERENCES users(id)      ON DELETE CASCADE,
+    CONSTRAINT fk_rev_item   FOREIGN KEY (menu_item_id) REFERENCES menu_items(id) ON DELETE CASCADE,
+    CONSTRAINT uq_review     UNIQUE (buyer_id, menu_item_id, order_id)
+);
+
+-- Seed admin (password = admin123)
+MERGE INTO users (id, name, email, password_hash, role) KEY(email)
+VALUES (1, 'Admin User', 'admin@benedictmart.com',
+        '$2a$12$pFEFuGJPxOBHoGVMtyAT/eP2OkCyHH0x7lC6R9R.FD0wFbGGJjS0a', 'ADMIN');
+
+-- Seed owner (password = owner123)
+MERGE INTO users (id, name, email, password_hash, role) KEY(email)
+VALUES (2, 'Jerome Owner', 'owner@benedictmart.com',
+        '$2a$12$Z7HXsb0MxDKKWuV3FOeSw.w1oJ/XO/a8f1R.eS.XCzEgVv8Vs1v5K', 'RESTAURANT_OWNER');
+
+MERGE INTO restaurants (id, owner_id, name, cuisine_type, address) KEY(id)
+VALUES (1, 2, 'Jerome Kitchen', 'Multi-cuisine', '12 Main Street, Chennai');
+
+MERGE INTO menu_items (id, restaurant_id, name, description, price, stock_qty, category) KEY(id)
+VALUES
+(1, 1, 'Masala Burger',   'Spicy Indian-style burger with chutney',   120.00, 50, 'Burger'),
+(2, 1, 'Paneer Pizza',    'Wood-fired pizza with paneer tikka',        220.00, 30, 'Pizza'),
+(3, 1, 'Chicken Biryani', 'Aromatic basmati rice with tender chicken', 180.00, 40, 'Biryani'),
+(4, 1, 'Veg Noodles',     'Stir-fried veggies with hakka noodles',     110.00, 60, 'Noodles'),
+(5, 1, 'Mango Lassi',     'Chilled mango yogurt drink',                 60.00, 80, 'Drink'),
+(6, 1, 'Gulab Jamun',     'Soft milk-solid dumplings in sugar syrup',   80.00, 70, 'Dessert'),
+(7, 1, 'Spring Rolls',    'Crispy vegetable spring rolls',              90.00, 55, 'Starter'),
+(8, 1, 'Greek Salad',     'Fresh veggies with feta and olives',        130.00, 45, 'Salad');
+
+ALTER TABLE users ALTER COLUMN id RESTART WITH 10;
+ALTER TABLE restaurants ALTER COLUMN id RESTART WITH 10;
+ALTER TABLE menu_items ALTER COLUMN id RESTART WITH 10;
+
+=== D:\benedictmart\benedictmart\jerome_zom\src\main\java\com\benedictjeromemart\listener\AppContextListener.java ===
+package com.benedictjeromemart.listener;
+
+import java.io.File;
+
+import javax.servlet.ServletContextEvent;
+import javax.servlet.ServletContextListener;
+import javax.servlet.annotation.WebListener;
+
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
+
+@WebListener
+public class AppContextListener implements ServletContextListener {
+
+    private static HikariDataSource dataSource;
+
+    @Override
+    public void contextInitialized(ServletContextEvent sce) {
+        if (dataSource != null && !dataSource.isClosed()) {
+            return;
+        }
+
+        // Safe, portable default — works on Windows, Linux, and any PaaS container,
+        // since it's relative to wherever the app actually runs from.
+        String dbUrl = "jdbc:h2:./data/benedictjeromemart";
+        String dbUser = "sa";
+        String dbPass = "";
+
+        // Priority 1: environment variables (how Render/Railway inject config —
+        // set these in their dashboard, not in a file baked into the .war)
+        String envUrl = System.getenv("DB_URL");
+        String envUser = System.getenv("DB_USERNAME");
+        String envPass = System.getenv("DB_PASSWORD");
+        if (envUrl != null && !envUrl.isBlank()) dbUrl = envUrl;
+        if (envUser != null && !envUser.isBlank()) dbUser = envUser;
+        if (envPass != null) dbPass = envPass;
+
+        // Priority 2: config.properties on the classpath (useful for local dev —
+        // e.g. to add ;AUTO_SERVER=TRUE so the H2 Console can connect at the same time)
+        try (java.io.InputStream in = AppContextListener.class.getClassLoader().getResourceAsStream("config.properties")) {
+            if (in != null) {
+                java.util.Properties props = new java.util.Properties();
+                props.load(in);
+                if (props.getProperty("db.url") != null) dbUrl = props.getProperty("db.url");
+                if (props.getProperty("db.username") != null) dbUser = props.getProperty("db.username");
+                if (props.getProperty("db.password") != null) dbPass = props.getProperty("db.password");
+            }
+        } catch (Exception ignored) {}
+
+        // Priority 3 (this method): the safe relative default set above, used if
+        // neither env vars nor config.properties provided anything.
+
+        // Make sure the data folder actually exists — H2 does NOT create missing
+        // parent directories on its own, and will fail to start if it's absent.
+        ensureDataDirectoryExists(dbUrl);
+
+        HikariConfig config = new HikariConfig();
+        config.setJdbcUrl(dbUrl);
+        config.setDriverClassName("org.h2.Driver");
+        config.setUsername(dbUser);
+        config.setPassword(dbPass);
+        config.setMaximumPoolSize(10);
+
+        dataSource = new HikariDataSource(config);
+        if (sce != null && sce.getServletContext() != null) {
+            sce.getServletContext().setAttribute("dataSource", dataSource);
+        }
+
+        // Initialize schema from schema.sql
+        try (java.sql.Connection conn = dataSource.getConnection();
+             java.io.InputStream is = AppContextListener.class.getClassLoader().getResourceAsStream("schema.sql")) {
+            if (is != null) {
+                java.util.Scanner scanner = new java.util.Scanner(is, "UTF-8").useDelimiter(";");
+                try (java.sql.Statement stmt = conn.createStatement()) {
+                    while (scanner.hasNext()) {
+                        String statement = scanner.next().trim();
+                        if (!statement.isEmpty()) {
+                            stmt.execute(statement);
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Database schema initialization warning: " + e.getMessage());
+        }
+    }
+
+    /**
+     * H2 file-based URLs look like jdbc:h2:./data/foo or jdbc:h2:file:./data/foo.
+     * This pulls out the folder portion and creates it if missing, so startup
+     * doesn't fail on a fresh deployment with no data/ folder yet.
+     */
+    private void ensureDataDirectoryExists(String jdbcUrl) {
+        try {
+            String path = jdbcUrl.replaceFirst("^jdbc:h2:(file:)?", "");
+            int semicolon = path.indexOf(';');
+            if (semicolon != -1) path = path.substring(0, semicolon);
+
+            File dbFile = new File(path).getAbsoluteFile();
+            File parentDir = dbFile.getParentFile();
+            if (parentDir != null && !parentDir.exists()) {
+                parentDir.mkdirs();
+            }
+        } catch (Exception e) {
+            System.err.println("Could not verify/create data directory: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public void contextDestroyed(ServletContextEvent sce) {
+        if (dataSource != null) {
+            dataSource.close();
+        }
+    }
+
+    public static HikariDataSource getDataSource() {
+        return dataSource;
+    }
+
+    public static void setDataSource(HikariDataSource ds) {
+        dataSource = ds;
+    }
+}
+
+=== D:\benedictmart\benedictmart\jerome_zom\src\main\java\com\benedictjeromemart\listener\AppContextListener.java ===
+package com.benedictjeromemart.listener;
+
+import java.io.File;
+
+import javax.servlet.ServletContextEvent;
+import javax.servlet.ServletContextListener;
+import javax.servlet.annotation.WebListener;
+
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
+
+@WebListener
+public class AppContextListener implements ServletContextListener {
+
+    private static HikariDataSource dataSource;
+
+    @Override
+    public void contextInitialized(ServletContextEvent sce) {
+        if (dataSource != null && !dataSource.isClosed()) {
+            return;
+        }
+
+        // Safe, portable default — works on Windows, Linux, and any PaaS container,
+        // since it's relative to wherever the app actually runs from.
+        String dbUrl = "jdbc:h2:./data/benedictjeromemart";
+        String dbUser = "sa";
+        String dbPass = "";
+
+        // Priority 1: environment variables (how Render/Railway inject config —
+        // set these in their dashboard, not in a file baked into the .war)
+        String envUrl = System.getenv("DB_URL");
+        String envUser = System.getenv("DB_USERNAME");
+        String envPass = System.getenv("DB_PASSWORD");
+        if (envUrl != null && !envUrl.isBlank()) dbUrl = envUrl;
+        if (envUser != null && !envUser.isBlank()) dbUser = envUser;
+        if (envPass != null) dbPass = envPass;
+
+        // Priority 2: config.properties on the classpath (useful for local dev —
+        // e.g. to add ;AUTO_SERVER=TRUE so the H2 Console can connect at the same time)
+        try (java.io.InputStream in = AppContextListener.class.getClassLoader().getResourceAsStream("config.properties")) {
+            if (in != null) {
+                java.util.Properties props = new java.util.Properties();
+                props.load(in);
+                if (props.getProperty("db.url") != null) dbUrl = props.getProperty("db.url");
+                if (props.getProperty("db.username") != null) dbUser = props.getProperty("db.username");
+                if (props.getProperty("db.password") != null) dbPass = props.getProperty("db.password");
+            }
+        } catch (Exception ignored) {}
+
+        // Priority 3 (this method): the safe relative default set above, used if
+        // neither env vars nor config.properties provided anything.
+
+        // Make sure the data folder actually exists — H2 does NOT create missing
+        // parent directories on its own, and will fail to start if it's absent.
+        ensureDataDirectoryExists(dbUrl);
+
+        HikariConfig config = new HikariConfig();
+        config.setJdbcUrl(dbUrl);
+        config.setDriverClassName("org.h2.Driver");
+        config.setUsername(dbUser);
+        config.setPassword(dbPass);
+        config.setMaximumPoolSize(10);
+
+        dataSource = new HikariDataSource(config);
+        if (sce != null && sce.getServletContext() != null) {
+            sce.getServletContext().setAttribute("dataSource", dataSource);
+        }
+
+        // Initialize schema from schema.sql
+        try (java.sql.Connection conn = dataSource.getConnection();
+             java.io.InputStream is = AppContextListener.class.getClassLoader().getResourceAsStream("schema.sql")) {
+            if (is != null) {
+                java.util.Scanner scanner = new java.util.Scanner(is, "UTF-8").useDelimiter(";");
+                try (java.sql.Statement stmt = conn.createStatement()) {
+                    while (scanner.hasNext()) {
+                        String statement = scanner.next().trim();
+                        if (!statement.isEmpty()) {
+                            stmt.execute(statement);
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Database schema initialization warning: " + e.getMessage());
+        }
+    }
+
+    /**
+     * H2 file-based URLs look like jdbc:h2:./data/foo or jdbc:h2:file:./data/foo.
+     * This pulls out the folder portion and creates it if missing, so startup
+     * doesn't fail on a fresh deployment with no data/ folder yet.
+     */
+    private void ensureDataDirectoryExists(String jdbcUrl) {
+        try {
+            String path = jdbcUrl.replaceFirst("^jdbc:h2:(file:)?", "");
+            int semicolon = path.indexOf(';');
+            if (semicolon != -1) path = path.substring(0, semicolon);
+
+            File dbFile = new File(path).getAbsoluteFile();
+            File parentDir = dbFile.getParentFile();
+            if (parentDir != null && !parentDir.exists()) {
+                parentDir.mkdirs();
+            }
+        } catch (Exception e) {
+            System.err.println("Could not verify/create data directory: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public void contextDestroyed(ServletContextEvent sce) {
+        if (dataSource != null) {
+            dataSource.close();
+        }
+    }
+
+    public static HikariDataSource getDataSource() {
+        return dataSource;
+    }
+
+    public static void setDataSource(HikariDataSource ds) {
+        dataSource = ds;
+    }
+}
+
+=== D:\benedictmart\benedictmart\jerome_zom\src\main\java\com\yourname\yournameeats\listener\AppContextListener.java ===
+
+=== D:\benedictmart\benedictmart\jerome_zom\src\main\java\com\benedictjeromemart\controller\CartServlet.java ===
+package com.benedictjeromemart.controller;
+
+import java.io.IOException;
+import java.util.List;
+
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.benedictjeromemart.dao.CartDAO;
+import com.benedictjeromemart.dao.CartDAOImpl;
+import com.benedictjeromemart.model.CartItem;
+import com.benedictjeromemart.util.GsonUtil;
+
+@WebServlet("/api/v1/cart")
+public class CartServlet extends HttpServlet {
+
+    private final CartDAO cartDAO = new CartDAOImpl();
+    private final Gson gson = GsonUtil.create();
+
+    private int getUserId(HttpServletRequest req) {
+        HttpSession session = req.getSession(false);
+        return (int) session.getAttribute("userId");
+    }
+
+    @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        resp.setContentType("application/json");
+        List<CartItem> items = cartDAO.findByUser(getUserId(req));
+
+        JsonObject envelope = new JsonObject();
+        envelope.addProperty("success", true);
+        envelope.add("data", gson.toJsonTree(items));
+        envelope.add("error", null);
+        resp.getWriter().write(gson.toJson(envelope));
+    }
+
+    @Override
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        resp.setContentType("application/json");
+        int menuItemId = Integer.parseInt(req.getParameter("menuItemId"));
+        int quantity = Integer.parseInt(req.getParameter("quantity"));
+
+        cartDAO.addOrUpdate(getUserId(req), menuItemId, quantity);
+
+        JsonObject envelope = new JsonObject();
+        envelope.addProperty("success", true);
+        envelope.add("data", null);
+        envelope.add("error", null);
+        resp.getWriter().write(gson.toJson(envelope));
+    }
+
+    @Override
+    protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        resp.setContentType("application/json");
+        int menuItemId = Integer.parseInt(req.getParameter("menuItemId"));
+
+        cartDAO.remove(getUserId(req), menuItemId);
+
+        JsonObject envelope = new JsonObject();
+        envelope.addProperty("success", true);
+        envelope.add("data", null);
+        envelope.add("error", null);
+        resp.getWriter().write(gson.toJson(envelope));
+    }
+}
+
+=== D:\benedictmart\benedictmart\jerome_zom\src\main\java\com\benedictjeromemart\controller\OrderServlet.java ===
+package com.benedictjeromemart.controller;
+
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.util.List;
+
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.benedictjeromemart.dao.CartDAO;
+import com.benedictjeromemart.dao.CartDAOImpl;
+import com.benedictjeromemart.dao.MenuItemDAO;
+import com.benedictjeromemart.dao.MenuItemDAOImpl;
+import com.benedictjeromemart.dao.OrderDAO;
+import com.benedictjeromemart.dao.OrderDAOImpl;
+import com.benedictjeromemart.model.CartItem;
+import com.benedictjeromemart.model.MenuItem;
+import com.benedictjeromemart.util.GsonUtil;
+
+@WebServlet("/api/v1/orders")
+public class OrderServlet extends HttpServlet {
+
+    private final CartDAO cartDAO = new CartDAOImpl();
+    private final MenuItemDAO menuItemDAO = new MenuItemDAOImpl();
+    private final OrderDAO orderDAO = new OrderDAOImpl();
+    private final Gson gson = GsonUtil.create();
+
+    @Override
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        resp.setContentType("application/json");
+        HttpSession session = req.getSession(false);
+        int userId = (int) session.getAttribute("userId");
+
+        List<CartItem> cartItems = cartDAO.findByUser(userId);
+        JsonObject envelope = new JsonObject();
+
+        if (cartItems.isEmpty()) {
+            JsonObject error = new JsonObject();
+            error.addProperty("code", "EMPTY_CART");
+            error.addProperty("message", "Cannot checkout an empty cart");
+            envelope.addProperty("success", false);
+            envelope.add("data", null);
+            envelope.add("error", error);
+            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            resp.getWriter().write(gson.toJson(envelope));
+            return;
+        }
+
+        BigDecimal total = BigDecimal.ZERO;
+        int restaurantId = 0;
+        for (CartItem item : cartItems) {
+            MenuItem menuItem = menuItemDAO.findById(item.getMenuItemId());
+            total = total.add(menuItem.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())));
+            restaurantId = menuItem.getRestaurantId();
+        }
+
+        int orderId = orderDAO.placeOrder(userId, restaurantId, cartItems, total);
+
+        JsonObject data = new JsonObject();
+        data.addProperty("orderId", orderId);
+        data.addProperty("total", total);
+        data.addProperty("status", "PENDING");
+
+        envelope.addProperty("success", true);
+        envelope.add("data", data);
+        envelope.add("error", null);
+        resp.setStatus(HttpServletResponse.SC_CREATED);
+        resp.getWriter().write(gson.toJson(envelope));
+    }
+}
+
+=== D:\benedictmart\benedictmart\jerome_zom\src\main\java\com\benedictjeromemart\controller\LoginServlet.java ===
+package com.benedictjeromemart.controller;
+
+import java.io.IOException;
+import java.util.Optional;
+
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.benedictjeromemart.dao.UserDAO;
+import com.benedictjeromemart.dao.UserDAOImpl;
+import com.benedictjeromemart.model.User;
+import com.benedictjeromemart.util.GsonUtil;
+import com.benedictjeromemart.util.PasswordUtil;
+
+@WebServlet("/api/v1/login")
+public class LoginServlet extends HttpServlet {
+
+    private final UserDAO userDAO = new UserDAOImpl();
+    private final Gson gson = GsonUtil.create();
+
+    @Override
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp)
+            throws ServletException, IOException {
+
+        resp.setContentType("application/json");
+        String email = req.getParameter("email");
+        String password = req.getParameter("password");
+
+        JsonObject envelope = new JsonObject();
+        Optional<User> userOpt = userDAO.findByEmail(email);
+
+        if (userOpt.isPresent() && PasswordUtil.verify(password, userOpt.get().getPasswordHash())) {
+            User user = userOpt.get();
+
+            HttpSession oldSession = req.getSession(false);
+            if (oldSession != null) {
+                oldSession.invalidate();
+            }
+            HttpSession session = req.getSession(true);
+            session.setAttribute("userId", user.getId());
+            session.setAttribute("userRole", user.getRole());
+            session.setAttribute("userName", user.getName());
+            session.setMaxInactiveInterval(30 * 60); // 30 min timeout
+
+            JsonObject data = new JsonObject();
+            data.addProperty("id", user.getId());
+            data.addProperty("name", user.getName());
+            data.addProperty("role", user.getRole());
+
+            envelope.addProperty("success", true);
+            envelope.add("data", data);
+            envelope.add("error", null);
+            resp.setStatus(HttpServletResponse.SC_OK);
+
+        } else {
+            JsonObject error = new JsonObject();
+            error.addProperty("code", "AUTH_ERROR");
+            error.addProperty("message", "Invalid email or password");
+
+            envelope.addProperty("success", false);
+            envelope.add("data", null);
+            envelope.add("error", error);
+            resp.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        }
+
+        resp.getWriter().write(gson.toJson(envelope));
+    }
+}
