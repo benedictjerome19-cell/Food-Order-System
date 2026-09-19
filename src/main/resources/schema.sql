@@ -82,21 +82,21 @@ CREATE TABLE IF NOT EXISTS reviews (
 
 -- Seed admin (password = admin123)
 INSERT INTO users (id, name, email, password_hash, role)
-VALUES (1, 'Admin User', 'admin@benedictmart.com',
-        '$2a$12$pFEFuGJPxOBHoGVMtyAT/eP2OkCyHH0x7lC6R9R.FD0wFbGGJjS0a', 'ADMIN')
-ON CONFLICT DO NOTHING;
+SELECT 1, 'Admin User', 'admin@benedictmart.com',
+        '$2a$12$pFEFuGJPxOBHoGVMtyAT/eP2OkCyHH0x7lC6R9R.FD0wFbGGJjS0a', 'ADMIN'
+WHERE NOT EXISTS (SELECT 1 FROM users WHERE id = 1);
 
 -- Seed owner (password = owner123)
 INSERT INTO users (id, name, email, password_hash, role)
-VALUES (2, 'Jerome Owner', 'owner@benedictmart.com',
-        '$2a$12$Z7HXsb0MxDKKWuV3FOeSw.w1oJ/XO/a8f1R.eS.XCzEgVv8Vs1v5K', 'RESTAURANT_OWNER')
-ON CONFLICT DO NOTHING;
+SELECT 2, 'Jerome Owner', 'owner@benedictmart.com',
+        '$2a$12$Z7HXsb0MxDKKWuV3FOeSw.w1oJ/XO/a8f1R.eS.XCzEgVv8Vs1v5K', 'RESTAURANT_OWNER'
+WHERE NOT EXISTS (SELECT 1 FROM users WHERE id = 2);
 
 INSERT INTO restaurants (id, owner_id, name, cuisine_type, address)
-VALUES (1, 2, 'Jerome Kitchen', 'Multi-cuisine', '12 Main Street, Chennai')
-ON CONFLICT DO NOTHING;
+SELECT 1, 2, 'Jerome Kitchen', 'Multi-cuisine', '12 Main Street, Chennai'
+WHERE NOT EXISTS (SELECT 1 FROM restaurants WHERE id = 1);
 
-INSERT INTO menu_items (id, restaurant_id, name, description, price, stock_qty, category)
+MERGE INTO menu_items (id, restaurant_id, name, description, price, stock_qty, category) KEY (id)
 VALUES
 (1, 1, 'Masala Burger',   'Spicy Indian-style burger with chutney',   120.00, 50, 'Burger'),
 (2, 1, 'Paneer Pizza',    'Wood-fired pizza with paneer tikka',        220.00, 30, 'Pizza'),
@@ -105,5 +105,4 @@ VALUES
 (5, 1, 'Mango Lassi',     'Chilled mango yogurt drink',                 60.00, 80, 'Drink'),
 (6, 1, 'Gulab Jamun',     'Soft milk-solid dumplings in sugar syrup',   80.00, 70, 'Dessert'),
 (7, 1, 'Spring Rolls',    'Crispy vegetable spring rolls',              90.00, 55, 'Starter'),
-(8, 1, 'Greek Salad',     'Fresh veggies with feta and olives',        130.00, 45, 'Salad')
-ON CONFLICT DO NOTHING;
+(8, 1, 'Greek Salad',     'Fresh veggies with feta and olives',        130.00, 45, 'Salad');
