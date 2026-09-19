@@ -10,8 +10,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
 import com.benedictjeromemart.dao.CartDAO;
 import com.benedictjeromemart.dao.CartDAOImpl;
 import com.benedictjeromemart.dao.MenuItemDAO;
@@ -21,6 +19,8 @@ import com.benedictjeromemart.dao.OrderDAOImpl;
 import com.benedictjeromemart.model.CartItem;
 import com.benedictjeromemart.model.MenuItem;
 import com.benedictjeromemart.util.GsonUtil;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 
 @WebServlet("/api/v1/orders")
 public class OrderServlet extends HttpServlet {
@@ -51,7 +51,6 @@ public class OrderServlet extends HttpServlet {
             return;
         }
 
-        // Safely extract the userId from the session
         Integer userId = (Integer) session.getAttribute("userId");
         List<CartItem> cartItems = cartDAO.findByUser(userId);
 
@@ -92,7 +91,6 @@ public class OrderServlet extends HttpServlet {
             resp.getWriter().write(gson.toJson(envelope));
             
         } catch (RuntimeException e) { 
-            // FIXED: Changed from Exception to RuntimeException to satisfy the IDE warning
             e.printStackTrace();
             writeError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "SERVER_ERROR", "Failed to place order.");
         }

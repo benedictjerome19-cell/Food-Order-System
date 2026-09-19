@@ -10,12 +10,12 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
 import com.benedictjeromemart.dao.CartDAO;
 import com.benedictjeromemart.dao.CartDAOImpl;
 import com.benedictjeromemart.model.CartItem;
 import com.benedictjeromemart.util.GsonUtil;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 
 @WebServlet("/api/v1/cart")
 @MultipartConfig
@@ -85,8 +85,7 @@ public class CartServlet extends HttpServlet {
             try {
                 jsonBody = gson.fromJson(req.getReader(), JsonObject.class);
             } catch (Exception e) {
-                // FIXED: Printing the stack trace clears the "Empty Catch Block" IDE warning
-                e.printStackTrace(); 
+                e.printStackTrace();
             }
         }
 
@@ -112,6 +111,7 @@ public class CartServlet extends HttpServlet {
             int menuItemId = Integer.parseInt(menuItemIdParam);
             cartDAO.addOrUpdate(userId, menuItemId, quantity);
             
+            // Fetch updated cart to refresh frontend UI
             List<CartItem> updatedCart = cartDAO.findByUser(userId);
 
             JsonObject envelope = new JsonObject();
@@ -140,8 +140,7 @@ public class CartServlet extends HttpServlet {
             try {
                 jsonBody = gson.fromJson(req.getReader(), JsonObject.class);
             } catch (Exception e) {
-                // FIXED: Printing the stack trace clears the "Empty Catch Block" IDE warning
-                e.printStackTrace(); 
+                e.printStackTrace();
             }
         }
 
@@ -155,6 +154,7 @@ public class CartServlet extends HttpServlet {
             int menuItemId = Integer.parseInt(menuItemIdParam);
             cartDAO.remove(userId, menuItemId);
             
+            // Fetch updated cart to refresh frontend UI
             List<CartItem> updatedCart = cartDAO.findByUser(userId);
 
             JsonObject envelope = new JsonObject();
