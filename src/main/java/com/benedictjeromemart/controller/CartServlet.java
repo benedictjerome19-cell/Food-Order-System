@@ -10,21 +10,20 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import com.benedictjeromemart.dao.CartDAO;
 import com.benedictjeromemart.dao.CartDAOImpl;
 import com.benedictjeromemart.model.CartItem;
 import com.benedictjeromemart.util.GsonUtil;
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
 
 @WebServlet("/api/v1/cart")
-@MultipartConfig // CRITICAL FIX: Allows Tomcat to read modern JavaScript FormData
+@MultipartConfig
 public class CartServlet extends HttpServlet {
 
     private final CartDAO cartDAO = new CartDAOImpl();
     private final Gson gson = GsonUtil.create();
 
-    // Safely gets the user ID, returning null if the session is invalid
     private Integer getUserId(HttpServletRequest req) {
         HttpSession session = req.getSession(false);
         if (session != null && session.getAttribute("userId") != null) {
@@ -37,72 +36,71 @@ public class CartServlet extends HttpServlet {
         JsonObject error = new JsonObject();
         error.addProperty("code", code);
         error.addProperty("message", message);
-
         JsonObject envelope = new JsonObject();
         envelope.addProperty("success", false);
         envelope.add("data", null);
         envelope.add("error", error);
-
         resp.setStatus(status);
+        resp.setContentType("application/json");
         resp.getWriter().write(gson.toJson(envelope));
     }
 
-    // Helper to safely read parameters whether they come from a standard form or JSON
-    private String extractParameter(HttpServletRequest req, String paramName) {
-        String value = req.getParameter(paramName);
-        if (value == null || value.isBlank()) {
-            // Check if the frontend accidentally sent it under 'id' instead of 'menuItemId'
-            if ("menuItemId".equals(paramName)) {
-                value = req.getParameter("id"); 
-            }
+    private String getParam(HttpServletRequest req, JsonObject jsonBody, String key) {
+        String val = req.getParameter(key);
+        if (val == null && jsonBody != null && jsonBody.has(key)) {
+            val = jsonBody.get(key).getAsString();
         }
-        return value;
+        return val;
     }
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-        resp.setContentType("application/json");
-        
         Integer userId = getUserId(req);
         if (userId == null) {
-            writeError(resp, HttpServletResponse.SC_UNAUTHORIZED, "UNAUTHORIZED", "Please log in to view your cart.");
+            writeError(resp, HttpServletResponse.SC_UNAUTHORIZED, "UNAUTHORIZED", "Please log in");
             return;
         }
 
         List<CartItem> items = cartDAO.findByUser(userId);
-
         JsonObject envelope = new JsonObject();
         envelope.addProperty("success", true);
         envelope.add("data", gson.toJsonTree(items));
         envelope.add("error", null);
+        
+        resp.setContentType("application/json");
+        resp.setStatus(HttpServletResponse.SC_OK);
         resp.getWriter().write(gson.toJson(envelope));
     }
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-        resp.setContentType("application/json");
-        
         Integer userId = getUserId(req);
         if (userId == null) {
-            writeError(resp, HttpServletResponse.SC_UNAUTHORIZED, "UNAUTHORIZED", "Please log in to add items to your cart.");
+            writeError(resp, HttpServletResponse.SC_UNAUTHORIZED, "UNAUTHORIZED", "Please log in");
             return;
         }
 
-        String menuItemIdParam = extractParameter(req, "menuItemId");
-        String quantityParam = extractParameter(req, "quantity");
+        JsonObject jsonBody = null;
+        if (req.getContentType() != null && req.getContentType().contains("json")) {
+            try {
+                jsonBody = gson.fromJson(req.getReader(), JsonObject.class);
+            } catch (Exception ignored) {}
+        }
+
+        String menuItemIdParam = getParam(req, jsonBody, "menuItemId");
+        String quantityParam = getParam(req, jsonBody, "quantity");
 
         if (menuItemIdParam == null || menuItemIdParam.isBlank()) {
-            writeError(resp, HttpServletResponse.SC_BAD_REQUEST, "VALIDATION_ERROR", "menuItemId is required.");
+            writeError(resp, HttpServletResponse.SC_BAD_REQUEST, "VALIDATION_ERROR", "menuItemId is required");
             return;
         }
 
-        // Default to 1 if quantity is missing
-        int quantity = 1; 
+        int quantity = 1;
         if (quantityParam != null && !quantityParam.isBlank()) {
             try {
                 quantity = Integer.parseInt(quantityParam);
             } catch (NumberFormatException e) {
-                writeError(resp, HttpServletResponse.SC_BAD_REQUEST, "VALIDATION_ERROR", "quantity must be a number.");
+                writeError(resp, HttpServletResponse.SC_BAD_REQUEST, "VALIDATION_ERROR", "quantity must be a number");
                 return;
             }
         }
@@ -115,26 +113,33 @@ public class CartServlet extends HttpServlet {
             envelope.addProperty("success", true);
             envelope.add("data", null);
             envelope.add("error", null);
-            resp.getWriter().write(gson.toJson(envelope));
             
+            resp.setContentType("application/json");
+            resp.setStatus(HttpServletResponse.SC_OK);
+            resp.getWriter().write(gson.toJson(envelope));
         } catch (NumberFormatException e) {
-            writeError(resp, HttpServletResponse.SC_BAD_REQUEST, "VALIDATION_ERROR", "menuItemId must be a number.");
+            writeError(resp, HttpServletResponse.SC_BAD_REQUEST, "VALIDATION_ERROR", "menuItemId must be a number");
         }
     }
 
     @Override
     protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-        resp.setContentType("application/json");
-        
         Integer userId = getUserId(req);
         if (userId == null) {
-            writeError(resp, HttpServletResponse.SC_UNAUTHORIZED, "UNAUTHORIZED", "Please log in to modify your cart.");
+            writeError(resp, HttpServletResponse.SC_UNAUTHORIZED, "UNAUTHORIZED", "Please log in");
             return;
         }
 
-        String menuItemIdParam = extractParameter(req, "menuItemId");
+        JsonObject jsonBody = null;
+        if (req.getContentType() != null && req.getContentType().contains("json")) {
+            try {
+                jsonBody = gson.fromJson(req.getReader(), JsonObject.class);
+            } catch (Exception ignored) {}
+        }
+
+        String menuItemIdParam = getParam(req, jsonBody, "menuItemId");
         if (menuItemIdParam == null || menuItemIdParam.isBlank()) {
-            writeError(resp, HttpServletResponse.SC_BAD_REQUEST, "VALIDATION_ERROR", "menuItemId is required.");
+            writeError(resp, HttpServletResponse.SC_BAD_REQUEST, "VALIDATION_ERROR", "menuItemId is required");
             return;
         }
 
@@ -146,10 +151,12 @@ public class CartServlet extends HttpServlet {
             envelope.addProperty("success", true);
             envelope.add("data", null);
             envelope.add("error", null);
-            resp.getWriter().write(gson.toJson(envelope));
             
+            resp.setContentType("application/json");
+            resp.setStatus(HttpServletResponse.SC_OK);
+            resp.getWriter().write(gson.toJson(envelope));
         } catch (NumberFormatException e) {
-            writeError(resp, HttpServletResponse.SC_BAD_REQUEST, "VALIDATION_ERROR", "menuItemId must be a number.");
+            writeError(resp, HttpServletResponse.SC_BAD_REQUEST, "VALIDATION_ERROR", "menuItemId must be a number");
         }
     }
 }

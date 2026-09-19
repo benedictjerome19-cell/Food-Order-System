@@ -25,11 +25,28 @@ public class OrderHistoryServlet extends HttpServlet {
     private final OrderDAO orderDAO = new OrderDAOImpl();
     private final RestaurantDAO restaurantDAO = new RestaurantDAOImpl();
 
+    private void writeError(HttpServletResponse resp, int status, String code, String message) throws IOException {
+        JsonObject error = new JsonObject();
+        error.addProperty("code", code);
+        error.addProperty("message", message);
+        JsonObject envelope = new JsonObject();
+        envelope.addProperty("success", false);
+        envelope.add("data", null);
+        envelope.add("error", error);
+        resp.setStatus(status);
+        resp.setContentType("application/json");
+        resp.getWriter().write(JsonUtil.GSON.toJson(envelope));
+    }
+
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-        resp.setContentType("application/json");
         HttpSession session = req.getSession(false);
-        int userId = (int) session.getAttribute("userId");
+        if (session == null || session.getAttribute("userId") == null) {
+            writeError(resp, HttpServletResponse.SC_UNAUTHORIZED, "UNAUTHORIZED", "Please log in to view history");
+            return;
+        }
+
+        int userId = (Integer) session.getAttribute("userId");
         String role = (String) session.getAttribute("userRole");
 
         List<OrderSummary> orders;
@@ -46,6 +63,9 @@ public class OrderHistoryServlet extends HttpServlet {
         envelope.addProperty("success", true);
         envelope.add("data", JsonUtil.GSON.toJsonTree(orders));
         envelope.add("error", null);
+        
+        resp.setContentType("application/json");
+        resp.setStatus(HttpServletResponse.SC_OK);
         resp.getWriter().write(JsonUtil.GSON.toJson(envelope));
     }
 }
