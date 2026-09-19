@@ -107,11 +107,16 @@ public class CartServlet extends HttpServlet {
 
         try {
             int menuItemId = Integer.parseInt(menuItemIdParam);
+            // 1. Add the item to the database
             cartDAO.addOrUpdate(userId, menuItemId, quantity);
 
+            // 2. Fetch the newly updated cart list
+            List<CartItem> updatedCart = cartDAO.findByUser(userId);
+
+            // 3. Send the updated cart back to the frontend
             JsonObject envelope = new JsonObject();
             envelope.addProperty("success", true);
-            envelope.add("data", null);
+            envelope.add("data", gson.toJsonTree(updatedCart));
             envelope.add("error", null);
             
             resp.setContentType("application/json");
@@ -145,11 +150,16 @@ public class CartServlet extends HttpServlet {
 
         try {
             int menuItemId = Integer.parseInt(menuItemIdParam);
+            // 1. Remove the item
             cartDAO.remove(userId, menuItemId);
 
+            // 2. Fetch the newly updated cart list
+            List<CartItem> updatedCart = cartDAO.findByUser(userId);
+
+            // 3. Send it back to the frontend
             JsonObject envelope = new JsonObject();
             envelope.addProperty("success", true);
-            envelope.add("data", null);
+            envelope.add("data", gson.toJsonTree(updatedCart));
             envelope.add("error", null);
             
             resp.setContentType("application/json");
