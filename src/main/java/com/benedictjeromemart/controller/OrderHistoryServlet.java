@@ -10,7 +10,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
-import com.google.gson.JsonObject;
 import com.benedictjeromemart.dao.OrderDAO;
 import com.benedictjeromemart.dao.OrderDAOImpl;
 import com.benedictjeromemart.dao.RestaurantDAO;
@@ -18,6 +17,7 @@ import com.benedictjeromemart.dao.RestaurantDAOImpl;
 import com.benedictjeromemart.model.OrderSummary;
 import com.benedictjeromemart.model.Restaurant;
 import com.benedictjeromemart.util.JsonUtil;
+import com.google.gson.JsonObject;
 
 @WebServlet("/api/v1/orders/history")
 public class OrderHistoryServlet extends HttpServlet {
@@ -46,7 +46,6 @@ public class OrderHistoryServlet extends HttpServlet {
             return;
         }
 
-        // Safely extract the session attributes
         Integer userId = (Integer) session.getAttribute("userId");
         String role = (String) session.getAttribute("userRole");
 
