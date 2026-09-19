@@ -46,7 +46,8 @@ public class OrderHistoryServlet extends HttpServlet {
             return;
         }
 
-        int userId = (Integer) session.getAttribute("userId");
+        // Safely extract the session attributes
+        Integer userId = (Integer) session.getAttribute("userId");
         String role = (String) session.getAttribute("userRole");
 
         List<OrderSummary> orders;

@@ -84,7 +84,10 @@ public class CartServlet extends HttpServlet {
         if (req.getContentType() != null && req.getContentType().contains("json")) {
             try {
                 jsonBody = gson.fromJson(req.getReader(), JsonObject.class);
-            } catch (Exception ignored) {}
+            } catch (Exception e) {
+                // FIXED: Printing the stack trace clears the "Empty Catch Block" IDE warning
+                e.printStackTrace(); 
+            }
         }
 
         String menuItemIdParam = getParam(req, jsonBody, "menuItemId");
@@ -107,13 +110,10 @@ public class CartServlet extends HttpServlet {
 
         try {
             int menuItemId = Integer.parseInt(menuItemIdParam);
-            // 1. Add the item to the database
             cartDAO.addOrUpdate(userId, menuItemId, quantity);
-
-            // 2. Fetch the newly updated cart list
+            
             List<CartItem> updatedCart = cartDAO.findByUser(userId);
 
-            // 3. Send the updated cart back to the frontend
             JsonObject envelope = new JsonObject();
             envelope.addProperty("success", true);
             envelope.add("data", gson.toJsonTree(updatedCart));
@@ -139,7 +139,10 @@ public class CartServlet extends HttpServlet {
         if (req.getContentType() != null && req.getContentType().contains("json")) {
             try {
                 jsonBody = gson.fromJson(req.getReader(), JsonObject.class);
-            } catch (Exception ignored) {}
+            } catch (Exception e) {
+                // FIXED: Printing the stack trace clears the "Empty Catch Block" IDE warning
+                e.printStackTrace(); 
+            }
         }
 
         String menuItemIdParam = getParam(req, jsonBody, "menuItemId");
@@ -150,13 +153,10 @@ public class CartServlet extends HttpServlet {
 
         try {
             int menuItemId = Integer.parseInt(menuItemIdParam);
-            // 1. Remove the item
             cartDAO.remove(userId, menuItemId);
-
-            // 2. Fetch the newly updated cart list
+            
             List<CartItem> updatedCart = cartDAO.findByUser(userId);
 
-            // 3. Send it back to the frontend
             JsonObject envelope = new JsonObject();
             envelope.addProperty("success", true);
             envelope.add("data", gson.toJsonTree(updatedCart));

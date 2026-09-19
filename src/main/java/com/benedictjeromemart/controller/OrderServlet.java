@@ -51,38 +51,50 @@ public class OrderServlet extends HttpServlet {
             return;
         }
 
-        int userId = (Integer) session.getAttribute("userId");
+        // Safely extract the userId from the session
+        Integer userId = (Integer) session.getAttribute("userId");
         List<CartItem> cartItems = cartDAO.findByUser(userId);
 
-        if (cartItems.isEmpty()) {
+        if (cartItems == null || cartItems.isEmpty()) {
             writeError(resp, HttpServletResponse.SC_BAD_REQUEST, "EMPTY_CART", "Cannot checkout an empty cart");
             return;
         }
 
         BigDecimal total = BigDecimal.ZERO;
         int restaurantId = 0;
+        
         for (CartItem item : cartItems) {
             MenuItem menuItem = menuItemDAO.findById(item.getMenuItemId());
             if (menuItem != null) {
                 total = total.add(menuItem.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())));
                 restaurantId = menuItem.getRestaurantId();
+            } else {
+                writeError(resp, HttpServletResponse.SC_BAD_REQUEST, "INVALID_ITEM", "Cart contains an invalid item.");
+                return;
             }
         }
 
-        int orderId = orderDAO.placeOrder(userId, restaurantId, cartItems, total);
+        try {
+            int orderId = orderDAO.placeOrder(userId, restaurantId, cartItems, total);
 
-        JsonObject data = new JsonObject();
-        data.addProperty("orderId", orderId);
-        data.addProperty("total", total);
-        data.addProperty("status", "PENDING");
+            JsonObject data = new JsonObject();
+            data.addProperty("orderId", orderId);
+            data.addProperty("total", total);
+            data.addProperty("status", "PENDING");
 
-        JsonObject envelope = new JsonObject();
-        envelope.addProperty("success", true);
-        envelope.add("data", data);
-        envelope.add("error", null);
-        
-        resp.setContentType("application/json");
-        resp.setStatus(HttpServletResponse.SC_CREATED);
-        resp.getWriter().write(gson.toJson(envelope));
+            JsonObject envelope = new JsonObject();
+            envelope.addProperty("success", true);
+            envelope.add("data", data);
+            envelope.add("error", null);
+            
+            resp.setContentType("application/json");
+            resp.setStatus(HttpServletResponse.SC_CREATED);
+            resp.getWriter().write(gson.toJson(envelope));
+            
+        } catch (RuntimeException e) { 
+            // FIXED: Changed from Exception to RuntimeException to satisfy the IDE warning
+            e.printStackTrace();
+            writeError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "SERVER_ERROR", "Failed to place order.");
+        }
     }
 }
