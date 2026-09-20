@@ -1,7 +1,6 @@
 package com.benedictjeromemart.listener;
 
 import java.io.InputStream;
-import java.net.URI;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
@@ -112,7 +111,6 @@ public class AppContextListener implements ServletContextListener {
     private void initSchema() {
         runSqlScript("schema-postgres.sql", "Schema");
         
-        // Auto-seed local data export if users table is empty
         if (isUsersTableEmpty()) {
             System.out.println("[DB] Users table is empty. Importing data-postgres.sql...");
             runSqlScript("data-postgres.sql", "Data migration");
@@ -187,22 +185,37 @@ public class AppContextListener implements ServletContextListener {
         }
     }
 
+    /** Robust URL parser that safely handles special characters in passwords. */
     static String[] parsePostgresUrl(String raw) throws Exception {
-        URI uri = new URI(raw.trim());
-        String scheme = uri.getScheme();
-        if (scheme == null || !(scheme.equals("postgres") || scheme.equals("postgresql"))) {
-            throw new IllegalArgumentException("expected a jdbc:postgresql:// or postgresql:// URL");
+        String url = raw.trim();
+        if (url.startsWith("postgres://")) {
+            url = "jdbc:postgresql://" + url.substring("postgres://".length());
+        } else if (url.startsWith("postgresql://")) {
+            url = "jdbc:postgresql://" + url.substring("postgresql://".length());
+        } else if (!url.startsWith("jdbc:postgresql://")) {
+            throw new IllegalArgumentException("Expected postgresql:// or jdbc:postgresql:// URL");
         }
+
+        String withoutScheme = url.substring("jdbc:postgresql://".length());
         String user = "";
         String pass = "";
-        String userInfo = uri.getUserInfo();
-        if (userInfo != null) {
-            int colon = userInfo.indexOf(':');
-            user = colon >= 0 ? userInfo.substring(0, colon) : userInfo;
-            pass = colon >= 0 ? userInfo.substring(colon + 1) : "";
+        String hostPortDb = withoutScheme;
+
+        int atIndex = withoutScheme.lastIndexOf('@');
+        if (atIndex >= 0) {
+            String userInfo = withoutScheme.substring(0, atIndex);
+            hostPortDb = withoutScheme.substring(atIndex + 1);
+            int colonIndex = userInfo.indexOf(':');
+            if (colonIndex >= 0) {
+                user = userInfo.substring(0, colonIndex);
+                pass = userInfo.substring(colonIndex + 1);
+            } else {
+                user = userInfo;
+            }
         }
-        int port = uri.getPort() == -1 ? 5432 : uri.getPort();
-        return new String[] { "jdbc:postgresql://" + uri.getHost() + ":" + port + uri.getPath(), user, pass };
+
+        String jdbcUrl = "jdbc:postgresql://" + hostPortDb;
+        return new String[] { jdbcUrl, user, pass };
     }
 
     private static String ensureSsl(String url) {
