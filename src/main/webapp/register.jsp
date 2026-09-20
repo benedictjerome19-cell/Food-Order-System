@@ -1,94 +1,59 @@
-<%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create Account - BenedictJeromeMart</title>
-    <link rel="stylesheet" href="<%= request.getContextPath() %>/css/style.css">
+    <title>Register - Benedict Jerome Mart</title>
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/css/style.css">
 </head>
 <body>
-    <header class="navbar">
-        <a href="#" class="brand">
-            <div class="brand-icon">🛒</div>
-            BenedictJeromeMart
+    <nav class="navbar">
+        <a href="${pageContext.request.contextPath}/home.jsp" class="brand">
+            <div class="brand-icon">B</div>
+            Benedict Jerome Mart
         </a>
-    </header>
+    </nav>
 
-    <main class="auth-container">
+    <div class="auth-container">
         <div class="auth-card">
             <div class="auth-header">
-                <h2>Join BenedictJeromeMart</h2>
-                <p>Create an account to start exploring tasty options</p>
+                <h2>Create Account</h2>
+                <p>Join for a premium food experience.</p>
             </div>
+            
+            <% String error = request.getParameter("error");
+               if (error != null) { %>
+                   <div class="alert-message alert-error"><%= error %></div>
+            <% } %>
 
-            <form id="registerForm">
+            <!-- Submits dynamically to the correct context path -->
+            <form action="${pageContext.request.contextPath}/register" method="post">
                 <div class="form-group">
                     <label for="name">Full Name</label>
-                    <input type="text" id="name" name="name" class="form-control" placeholder="John Doe" required>
+                    <input type="text" id="name" name="name" class="form-control" required placeholder="John Doe">
                 </div>
-
                 <div class="form-group">
                     <label for="email">Email Address</label>
-                    <input type="email" id="email" name="email" class="form-control" placeholder="name@example.com" required>
+                    <input type="email" id="email" name="email" class="form-control" required placeholder="name@example.com">
                 </div>
-
                 <div class="form-group">
                     <label for="password">Password</label>
-                    <input type="password" id="password" name="password" class="form-control" placeholder="••••••••" required>
+                    <input type="password" id="password" name="password" class="form-control" required placeholder="••••••••">
                 </div>
-
                 <div class="form-group">
                     <label for="role">Account Role</label>
-                    <select id="role" name="role" class="form-control">
-                        <option value="CUSTOMER">Customer (Order Food)</option>
+                    <select id="role" name="role" class="form-control" required style="background: rgba(10,9,14,0.9);">
+                        <option value="CUSTOMER">Customer</option>
                         <option value="RESTAURANT_OWNER">Restaurant Owner</option>
                     </select>
                 </div>
-
-                <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">
-                    Create Account ✨
-                </button>
+                <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">Create Account</button>
             </form>
-
-            <div id="message"></div>
-
+            
             <div class="auth-footer">
-                Already have an account? <a href="login.jsp">Log in here</a>
+                Already have an account? <a href="${pageContext.request.contextPath}/login.jsp">Log in here</a>
             </div>
         </div>
-    </main>
-
-    <script>
-        document.getElementById('registerForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const messageDiv = document.getElementById('message');
-            messageDiv.innerHTML = '';
-            
-            const formData = new URLSearchParams(new FormData(this));
-
-            try {
-                const response = await fetch('<%= request.getContextPath() %>/api/v1/register', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                const result = await response.json();
-                if (result.success) {
-                    messageDiv.className = 'alert-message alert-success';
-                    messageDiv.textContent = 'Account created successfully! Redirecting to login...';
-                    setTimeout(() => {
-                        window.location.href = 'login.jsp';
-                    }, 1200);
-                } else {
-                    messageDiv.className = 'alert-message alert-error';
-                    messageDiv.textContent = result.error.message || 'Registration failed';
-                }
-            } catch (err) {
-                messageDiv.className = 'alert-message alert-error';
-                messageDiv.textContent = 'Server connection error. Please try again.';
-            }
-        });
-    </script>
+    </div>
 </body>
 </html>

@@ -19,3 +19,12 @@ target/
 data/
 
 data/
+
+src/main/resources/db.properties
+backup.sql
+data-postgres.sql
+debug.txt
+host.txt
+*.zip
+tomcat/
+data/

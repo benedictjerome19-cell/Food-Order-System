@@ -2,3 +2,11 @@ target
 .git
 .idea
 *.iml
+
+tomcat
+data
+*.zip
+backup.sql
+data-postgres.sql
+debug.txt
+src/main/resources/db.properties

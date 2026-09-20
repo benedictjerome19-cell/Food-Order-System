@@ -9,18 +9,31 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
-@WebServlet("/api/v1/logout")
+// FIX 1: Update the mapping to match the HTML navigation link
+@WebServlet("/logout")
 public class LogoutServlet extends HttpServlet {
+
+    // FIX 2: Add doGet because clicking an HTML <a> link triggers a GET request
+    @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp)
+            throws ServletException, IOException {
+        processLogout(req, resp);
+    }
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
+        processLogout(req, resp);
+    }
 
+    private void processLogout(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        // Destroy the user session securely
         HttpSession session = req.getSession(false);
         if (session != null) {
             session.invalidate();
         }
-        resp.setStatus(HttpServletResponse.SC_OK);
-        resp.getWriter().write("{\"success\":true,\"data\":null,\"error\":null}");
+        
+        // FIX 3: Redirect the user smoothly back to the login page
+        resp.sendRedirect(req.getContextPath() + "/login.jsp");
     }
 }

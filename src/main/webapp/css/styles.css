@@ -255,7 +255,7 @@ body {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
     gap: 1.75rem;
-    perspective: 1000px; /* 3D Perspective Context */
+    perspective: 1000px;
 }
 
 .menu-card {
@@ -269,7 +269,7 @@ body {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    transform-style: preserve-3d; /* 3D preserve */
+    transform-style: preserve-3d;
     transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.4s ease, border-color 0.4s ease;
 }
 
@@ -311,7 +311,7 @@ body {
     overflow: hidden;
     margin-bottom: 1rem;
     background: rgba(0, 0, 0, 0.4);
-    transform: translateZ(45px); /* 3D Pop out layer */
+    transform: translateZ(45px);
     box-shadow: 0 10px 25px rgba(0,0,0,0.5);
     transition: transform 0.4s ease;
 }
@@ -339,7 +339,7 @@ body {
     font-weight: 700;
     color: var(--accent-gold);
     border: 1px solid rgba(255, 184, 0, 0.3);
-    transform: translateZ(55px); /* Highest 3D Pop Out */
+    transform: translateZ(55px);
 }
 
 .menu-card-body {

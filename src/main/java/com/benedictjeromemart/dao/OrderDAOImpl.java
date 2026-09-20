@@ -20,9 +20,11 @@ import com.benedictjeromemart.model.OrderSummary;
 public class OrderDAOImpl implements OrderDAO {
 
     @Override
-    public int placeOrder(int buyerId, int restaurantId, List<CartItem> cartItems, BigDecimal total) {
+    public int placeOrder(int buyerId, int restaurantId, List<CartItem> cartItems, BigDecimal total,
+                          String deliveryAddress, String customerPhone, String paymentMethod, String transactionId) {
         String insertOrderSql =
-            "INSERT INTO orders (buyer_id, restaurant_id, status, total_amount) VALUES (?, ?, 'PENDING', ?)";
+            "INSERT INTO orders (buyer_id, restaurant_id, status, total_amount, delivery_address, customer_phone, payment_method, payment_status, transaction_id) " +
+            "VALUES (?, ?, 'PENDING', ?, ?, ?, ?, 'PAID', ?)";
         String insertItemSql =
             "INSERT INTO order_items (order_id, menu_item_id, quantity, unit_price) " +
             "SELECT ?, ?, ?, price FROM menu_items WHERE id = ?";
@@ -38,6 +40,10 @@ public class OrderDAOImpl implements OrderDAO {
                 stmt.setInt(1, buyerId);
                 stmt.setInt(2, restaurantId);
                 stmt.setBigDecimal(3, total);
+                stmt.setString(4, deliveryAddress);
+                stmt.setString(5, customerPhone);
+                stmt.setString(6, paymentMethod);
+                stmt.setString(7, transactionId);
                 stmt.executeUpdate();
                 try (ResultSet rs = stmt.getGeneratedKeys()) {
                     rs.next();
@@ -87,13 +93,10 @@ public class OrderDAOImpl implements OrderDAO {
         return runOrderSummaryQuery("", null);
     }
 
-    /** Header query (orders joined to restaurants + buyer name), then one batched
-     *  IN-clause query for line items across every order returned — avoids doing
-     *  a separate items query per order. */
     private List<OrderSummary> runOrderSummaryQuery(String whereClause, Integer filterValue) {
         String sql =
             "SELECT o.id, o.buyer_id, u.name AS buyer_name, o.restaurant_id, r.name AS restaurant_name, " +
-            "o.status, o.total_amount, o.created_at " +
+            "o.status, o.total_amount, o.delivery_address, o.customer_phone, o.payment_method, o.payment_status, o.transaction_id, o.created_at " +
             "FROM orders o " +
             "JOIN restaurants r ON r.id = o.restaurant_id " +
             "JOIN users u ON u.id = o.buyer_id " +
@@ -116,6 +119,11 @@ public class OrderDAOImpl implements OrderDAO {
                     summary.setRestaurantName(rs.getString("restaurant_name"));
                     summary.setStatus(rs.getString("status"));
                     summary.setTotalAmount(rs.getBigDecimal("total_amount"));
+                    summary.setDeliveryAddress(rs.getString("delivery_address"));
+                    summary.setCustomerPhone(rs.getString("customer_phone"));
+                    summary.setPaymentMethod(rs.getString("payment_method"));
+                    summary.setPaymentStatus(rs.getString("payment_status"));
+                    summary.setTransactionId(rs.getString("transaction_id"));
                     Timestamp ts = rs.getTimestamp("created_at");
                     if (ts != null) summary.setCreatedAt(ts.toLocalDateTime());
                     summary.setItems(new ArrayList<>());
@@ -172,8 +180,6 @@ public class OrderDAOImpl implements OrderDAO {
 
     @Override
     public boolean advanceStatus(int orderId, int restaurantId) {
-        // Single atomic UPDATE: only moves forward, only from a non-terminal status,
-        // only for this restaurant. Client never gets to name the target status.
         String sql =
             "UPDATE orders SET status = CASE status " +
             "WHEN 'PENDING' THEN 'CONFIRMED' " +

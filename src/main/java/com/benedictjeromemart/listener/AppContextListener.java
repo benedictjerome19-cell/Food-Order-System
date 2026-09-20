@@ -1,13 +1,11 @@
 package com.benedictjeromemart.listener;
 
-import java.io.File;
 import java.io.InputStream;
 import java.net.URI;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.Properties;
-import java.util.Scanner;
 
 import javax.servlet.ServletContextEvent;
 import javax.servlet.ServletContextListener;
@@ -16,25 +14,11 @@ import javax.servlet.annotation.WebListener;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 
-/**
- * Database bootstrap.
- *
- * Precedence (last one wins):
- *   1. built-in default: local H2 file ./data/benedictjeromemart
- *   2. config.properties on the classpath (local development only, gitignored)
- *   3. environment variables (how Render injects config):
- *        DATABASE_URL  = Render's "Internal Database URL" (postgresql://user:pass@host/db)
- *        or DB_URL     = jdbc:postgresql://host:5432/db  (+ DB_USERNAME / DB_PASSWORD)
- *
- * If the URL starts with jdbc:postgresql: the PostgreSQL driver and
- * schema-postgres.sql are used, otherwise H2 and schema.sql.
- */
 @WebListener
 public class AppContextListener implements ServletContextListener {
 
-    private static HikariDataSource dataSource;
+    private static volatile HikariDataSource dataSource;
 
-    /** Tables with an "id" identity column whose counter must be kept in sync. */
     private static final String[] ID_TABLES = {
         "users", "restaurants", "menu_items", "cart_items", "orders", "order_items", "reviews"
     };
@@ -42,139 +26,173 @@ public class AppContextListener implements ServletContextListener {
     @Override
     public void contextInitialized(ServletContextEvent sce) {
         if (dataSource != null && !dataSource.isClosed()) {
+            publish(sce);
             return;
         }
 
-        // 1. defaults
-        String dbUrl = "jdbc:h2:./data/benedictjeromemart";
-        String dbUser = "sa";
-        String dbPass = "";
+        String url = null;
+        String user = null;
+        String pass = null;
 
-        // 2. config.properties (local development)
-        try (InputStream in = AppContextListener.class.getClassLoader().getResourceAsStream("config.properties")) {
+        try (InputStream in = AppContextListener.class.getClassLoader().getResourceAsStream("db.properties")) {
             if (in != null) {
                 Properties props = new Properties();
                 props.load(in);
-                if (props.getProperty("db.url") != null) dbUrl = props.getProperty("db.url").trim();
-                if (props.getProperty("db.username") != null) dbUser = props.getProperty("db.username").trim();
-                if (props.getProperty("db.password") != null) dbPass = props.getProperty("db.password");
+                url = blankToNull(props.getProperty("db.url"));
+                user = firstNonBlank(props.getProperty("db.user"), props.getProperty("db.username"));
+                pass = props.getProperty("db.password");
+                if (pass != null) pass = pass.trim();
             }
-        } catch (Exception ignored) {
-            // no config file: keep defaults
+        } catch (Exception e) {
+            System.err.println("[DB] Could not read db.properties: " + e.getMessage());
         }
 
-        // 3. environment variables win
-        String rawUrl = firstNonBlank(System.getenv("DB_URL"), System.getenv("DATABASE_URL"));
-        if (rawUrl != null) {
-            if (rawUrl.startsWith("jdbc:")) {
-                dbUrl = rawUrl;
-            } else {
-                try {
-                    String[] parsed = parsePostgresUrl(rawUrl);
-                    dbUrl = parsed[0];
-                    dbUser = parsed[1];
-                    dbPass = parsed[2];
-                } catch (Exception e) {
-                    System.err.println("[DB] Could not parse database URL from environment: " + e.getMessage());
-                }
-            }
-        }
-        String envUser = System.getenv("DB_USERNAME");
+        String envUrl = firstNonBlank(System.getenv("DB_URL"), System.getenv("DATABASE_URL"));
+        String envUser = blankToNull(System.getenv("DB_USERNAME"));
         String envPass = System.getenv("DB_PASSWORD");
-        if (envUser != null && !envUser.isBlank()) dbUser = envUser;
-        if (envPass != null) dbPass = envPass;
+        if (envUrl != null) url = envUrl;
 
-        boolean postgres = dbUrl.startsWith("jdbc:postgresql:");
-        if (postgres) {
-            System.out.println("[DB] Using PostgreSQL");
-        } else {
-            System.out.println("[DB] Using local H2 file database: " + dbUrl
-                    + "  (NOT persistent on Render - set DATABASE_URL there)");
-            ensureDataDirectoryExists(dbUrl);
+        if (url == null) {
+            throw new IllegalStateException(
+                "[DB] No database configured. Set DATABASE_URL (or DB_URL + DB_USERNAME + DB_PASSWORD) "
+              + "as environment variables, or create src/main/resources/db.properties for local development.");
         }
+
+        String parsedUser = null;
+        String parsedPass = null;
+        if (!url.startsWith("jdbc:")) {
+            try {
+                String[] p = parsePostgresUrl(url);
+                url = p[0];
+                parsedUser = blankToNull(p[1]);
+                parsedPass = p[2];
+            } catch (Exception e) {
+                throw new IllegalStateException("[DB] Could not understand the database URL: " + e.getMessage(), e);
+            }
+        }
+        user = firstNonBlank(envUser, parsedUser, user);
+        pass = envPass != null ? envPass : (parsedPass != null ? parsedPass : pass);
+
+        if (!url.startsWith("jdbc:postgresql:")) {
+            throw new IllegalStateException("[DB] Only PostgreSQL is supported. The URL must start with jdbc:postgresql:");
+        }
+        url = ensureSsl(url);
+
+        System.out.println("[DB] Connecting to " + safeUrl(url) + " as user '" + user + "' ...");
 
         HikariConfig config = new HikariConfig();
-        config.setJdbcUrl(dbUrl);
-        config.setDriverClassName(postgres ? "org.postgresql.Driver" : "org.h2.Driver");
-        config.setUsername(dbUser);
-        config.setPassword(dbPass);
-        config.setMaximumPoolSize(10);
+        config.setPoolName("benedictmart-pool");
+        config.setJdbcUrl(url);
+        config.setDriverClassName("org.postgresql.Driver");
+        config.setUsername(user);
+        config.setPassword(pass == null ? "" : pass);
+        config.setMaximumPoolSize(intEnv("DB_POOL_SIZE", 5));
+        config.setConnectionTimeout(15000);
+        config.setInitializationFailTimeout(30000);
 
-        dataSource = new HikariDataSource(config);
+        try {
+            dataSource = new HikariDataSource(config);
+        } catch (Exception e) {
+            System.err.println("[DB] CONNECTION FAILED: " + rootMessage(e));
+            System.err.println("[DB] Hint: " + explain(e));
+            throw new IllegalStateException("[DB] Could not connect to PostgreSQL: " + rootMessage(e), e);
+        }
+
+        System.out.println("[DB] Connected to PostgreSQL.");
+        publish(sce);
+        initSchema();
+    }
+
+    private void publish(ServletContextEvent sce) {
         if (sce != null && sce.getServletContext() != null) {
             sce.getServletContext().setAttribute("dataSource", dataSource);
         }
-
-        initSchema(postgres);
     }
 
-    private void initSchema(boolean postgres) {
-        String resource = postgres ? "schema-postgres.sql" : "schema.sql";
+    private void initSchema() {
+        runSqlScript("schema-postgres.sql", "Schema");
+        
+        // Auto-seed local data export if users table is empty
+        if (isUsersTableEmpty()) {
+            System.out.println("[DB] Users table is empty. Importing data-postgres.sql...");
+            runSqlScript("data-postgres.sql", "Data migration");
+        } else {
+            System.out.println("[DB] Users table already contains data. Skipping data-postgres.sql import.");
+        }
+    }
+
+    private void runSqlScript(String resourceName, String label) {
         try (Connection conn = dataSource.getConnection();
-             InputStream is = AppContextListener.class.getClassLoader().getResourceAsStream(resource)) {
+             InputStream is = AppContextListener.class.getClassLoader().getResourceAsStream(resourceName)) {
 
             if (is == null) {
-                System.err.println("[DB] Schema file not found on classpath: " + resource);
+                System.err.println("[DB] " + resourceName + " not found on the classpath.");
                 return;
             }
 
-            // Drop full-line comments, then split into statements.
+            String text = new String(is.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+            if (!text.isEmpty() && text.charAt(0) == '\uFEFF') text = text.substring(1);
+
             StringBuilder cleaned = new StringBuilder();
-            try (Scanner lines = new Scanner(is, "UTF-8")) {
-                while (lines.hasNextLine()) {
-                    String line = lines.nextLine();
-                    if (!line.trim().startsWith("--")) {
-                        cleaned.append(line).append('\n');
-                    }
-                }
+            for (String line : text.split("\\R")) {
+                if (!line.trim().startsWith("--")) cleaned.append(line).append('\n');
             }
 
+            int ok = 0;
             try (Statement stmt = conn.createStatement()) {
                 for (String raw : cleaned.toString().split(";")) {
                     String sql = raw.trim();
                     if (sql.isEmpty()) continue;
-                    // Identity counters are synced below from the real data,
-                    // so a restart never resets them.
-                    if (sql.toUpperCase().contains("RESTART WITH")) continue;
                     try {
                         stmt.execute(sql);
+                        ok++;
                     } catch (Exception e) {
-                        String preview = sql.length() > 80 ? sql.substring(0, 80) + "..." : sql;
-                        System.err.println("[DB] Schema statement failed: " + e.getMessage() + " -> " + preview);
+                        String preview = sql.length() > 90 ? sql.substring(0, 90) + "..." : sql;
+                        System.err.println("[DB] " + label + " statement failed: " + e.getMessage().replace('\n', ' ')
+                                + "  ->  " + preview.replace('\n', ' '));
                     }
                 }
             }
-
-            syncIdentityCounters(conn, postgres);
-            System.out.println("[DB] Schema ready");
+            System.out.println("[DB] " + label + " ready (" + ok + " statements ok).");
+            if (resourceName.equals("schema-postgres.sql")) {
+                syncIdCounters(conn);
+            }
         } catch (Exception e) {
-            System.err.println("[DB] Schema initialization failed: " + e.getMessage());
+            System.err.println("[DB] " + label + " initialization failed: " + e.getMessage());
         }
     }
 
-    /** Sets each table's next id to MAX(id)+1 (needed after seeding / importing rows with explicit ids). */
-    private void syncIdentityCounters(Connection conn, boolean postgres) {
+    private boolean isUsersTableEmpty() {
+        try (Connection conn = dataSource.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM users")) {
+            if (rs.next()) {
+                return rs.getInt(1) == 0;
+            }
+        } catch (Exception e) {
+            return true;
+        }
+        return false;
+    }
+
+    private void syncIdCounters(Connection conn) {
         for (String table : ID_TABLES) {
-            try (Statement st = conn.createStatement();
-                 ResultSet rs = st.executeQuery("SELECT COALESCE(MAX(id), 0) + 1 FROM " + table)) {
+            String sql = "SELECT setval(pg_get_serial_sequence('" + table + "', 'id'), "
+                       + "(SELECT COALESCE(MAX(id), 0) + 1 FROM " + table + "), false)";
+            try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
                 rs.next();
-                long next = rs.getLong(1);
-                try (Statement st2 = conn.createStatement()) {
-                    if (postgres) {
-                        st2.execute("SELECT setval(pg_get_serial_sequence('" + table + "', 'id'), " + next + ", false)");
-                    } else {
-                        st2.execute("ALTER TABLE " + table + " ALTER COLUMN id RESTART WITH " + next);
-                    }
-                }
             } catch (Exception e) {
                 System.err.println("[DB] Could not sync id counter for " + table + ": " + e.getMessage());
             }
         }
     }
 
-    /** postgresql://user:pass@host[:port]/db  ->  {jdbcUrl, user, password} */
-    private static String[] parsePostgresUrl(String raw) throws Exception {
+    static String[] parsePostgresUrl(String raw) throws Exception {
         URI uri = new URI(raw.trim());
+        String scheme = uri.getScheme();
+        if (scheme == null || !(scheme.equals("postgres") || scheme.equals("postgresql"))) {
+            throw new IllegalArgumentException("expected a jdbc:postgresql:// or postgresql:// URL");
+        }
         String user = "";
         String pass = "";
         String userInfo = uri.getUserInfo();
@@ -184,41 +202,67 @@ public class AppContextListener implements ServletContextListener {
             pass = colon >= 0 ? userInfo.substring(colon + 1) : "";
         }
         int port = uri.getPort() == -1 ? 5432 : uri.getPort();
-        String url = "jdbc:postgresql://" + uri.getHost() + ":" + port + uri.getPath();
-        // External Render hostnames contain dots and require SSL; internal ones do not.
-        if (uri.getHost().contains(".")) {
-            url += "?sslmode=require";
-        }
-        return new String[] { url, user, pass };
+        return new String[] { "jdbc:postgresql://" + uri.getHost() + ":" + port + uri.getPath(), user, pass };
     }
 
-    private static String firstNonBlank(String a, String b) {
-        if (a != null && !a.isBlank()) return a.trim();
-        if (b != null && !b.isBlank()) return b.trim();
+    private static String ensureSsl(String url) {
+        if (url.contains(".render.com") && !url.contains("sslmode=")) {
+            return url + (url.contains("?") ? "&" : "?") + "sslmode=require";
+        }
+        return url;
+    }
+
+    private static String safeUrl(String url) {
+        int q = url.indexOf('?');
+        return q >= 0 ? url.substring(0, q) : url;
+    }
+
+    private static String rootMessage(Throwable t) {
+        Throwable r = t;
+        while (r.getCause() != null && r.getCause() != r) r = r.getCause();
+        return r.getClass().getSimpleName() + ": " + r.getMessage();
+    }
+
+    private static String explain(Throwable t) {
+        String m = rootMessage(t).toLowerCase();
+        if (m.contains("password authentication failed") || m.contains("authentication"))
+            return "wrong username or password (check DB_USERNAME / DB_PASSWORD or the password in the URL).";
+        if (m.contains("unknownhost") || m.contains("unknown host") || m.contains("name or service"))
+            return "the database host name cannot be resolved (use the External URL on your PC, the Internal URL on Render).";
+        if (m.contains("timed out") || m.contains("timeout") || m.contains("refused"))
+            return "cannot reach the database (firewall / no internet / database suspended or expired in the Render dashboard / wrong host or port).";
+        if (m.contains("ssl"))
+            return "SSL problem (add ?sslmode=require to the URL).";
+        if (m.contains("does not exist"))
+            return "database name in the URL is wrong.";
+        return "see the message above.";
+    }
+
+    private static String blankToNull(String s) {
+        return (s == null || s.trim().isEmpty()) ? null : s.trim();
+    }
+
+    private static String firstNonBlank(String... values) {
+        for (String v : values) {
+            if (v != null && !v.trim().isEmpty()) return v.trim();
+        }
         return null;
     }
 
-    /** H2 does not create missing parent directories on its own. */
-    private void ensureDataDirectoryExists(String jdbcUrl) {
+    private static int intEnv(String name, int def) {
         try {
-            String path = jdbcUrl.replaceFirst("^jdbc:h2:(file:)?", "");
-            int semicolon = path.indexOf(';');
-            if (semicolon != -1) path = path.substring(0, semicolon);
-
-            File dbFile = new File(path).getAbsoluteFile();
-            File parentDir = dbFile.getParentFile();
-            if (parentDir != null && !parentDir.exists()) {
-                parentDir.mkdirs();
-            }
-        } catch (Exception e) {
-            System.err.println("[DB] Could not verify/create data directory: " + e.getMessage());
+            String v = System.getenv(name);
+            return v == null ? def : Integer.parseInt(v.trim());
+        } catch (NumberFormatException e) {
+            return def;
         }
     }
 
     @Override
     public void contextDestroyed(ServletContextEvent sce) {
-        if (dataSource != null) {
+        if (dataSource != null && !dataSource.isClosed()) {
             dataSource.close();
+            System.out.println("[DB] Connection pool closed.");
         }
     }
 

@@ -2,7 +2,10 @@ package com.benedictjeromemart.controller;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.UUID;
 
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
@@ -52,6 +55,21 @@ public class OrderServlet extends HttpServlet {
         }
 
         Integer userId = (Integer) session.getAttribute("userId");
+        
+        // Extract multi-step checkout parameters from the frontend request
+        String deliveryAddress = req.getParameter("deliveryAddress");
+        String customerPhone = req.getParameter("customerPhone");
+        String paymentMethod = req.getParameter("paymentMethod");
+
+        if (deliveryAddress == null || deliveryAddress.isBlank() || customerPhone == null || customerPhone.isBlank()) {
+            writeError(resp, HttpServletResponse.SC_BAD_REQUEST, "VALIDATION_ERROR", "Delivery address and phone number are required.");
+            return;
+        }
+
+        if (paymentMethod == null || paymentMethod.isBlank()) {
+            paymentMethod = "ONLINE_UPI";
+        }
+
         List<CartItem> cartItems = cartDAO.findByUser(userId);
 
         if (cartItems == null || cartItems.isEmpty()) {
@@ -74,12 +92,19 @@ public class OrderServlet extends HttpServlet {
         }
 
         try {
-            int orderId = orderDAO.placeOrder(userId, restaurantId, cartItems, total);
+            // Generate unique transaction ID
+            String transactionId = "TXN-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")) + "-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
+
+            // Place order passing all 8 required arguments
+            int orderId = orderDAO.placeOrder(userId, restaurantId, cartItems, total, deliveryAddress, customerPhone, paymentMethod, transactionId);
 
             JsonObject data = new JsonObject();
             data.addProperty("orderId", orderId);
             data.addProperty("total", total);
             data.addProperty("status", "PENDING");
+            data.addProperty("transactionId", transactionId);
+            data.addProperty("paymentMethod", paymentMethod);
+            data.addProperty("deliveryAddress", deliveryAddress);
 
             JsonObject envelope = new JsonObject();
             envelope.addProperty("success", true);
@@ -92,7 +117,7 @@ public class OrderServlet extends HttpServlet {
             
         } catch (RuntimeException e) { 
             e.printStackTrace();
-            writeError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "SERVER_ERROR", "Failed to place order.");
+            writeError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "SERVER_ERROR", "Failed to place order: " + e.getMessage());
         }
     }
 }

@@ -79,8 +79,8 @@ public class MenuItemDAOImpl implements MenuItemDAO {
 
     @Override
     public MenuItem create(MenuItem item) {
-        String sql = "INSERT INTO menu_items (restaurant_id, name, description, price, stock_qty, category, image_url) " +
-                     "VALUES (?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO menu_items (restaurant_id, name, description, price, stock_qty, category, image_url, is_available) " +
+                     "VALUES (?, ?, ?, ?, ?, ?, ?, TRUE)";
         try (Connection conn = AppContextListener.getDataSource().getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
@@ -136,7 +136,6 @@ public class MenuItemDAOImpl implements MenuItemDAO {
         }
     }
 
-
     @Override
     public void deleteById(int id) {
         String sql = "DELETE FROM menu_items WHERE id = ?";
@@ -179,7 +178,8 @@ public class MenuItemDAOImpl implements MenuItemDAO {
 
     @Override
     public boolean updateAvailabilityByName(String namePattern, boolean available) {
-        String sql = "UPDATE menu_items SET available = ? WHERE LOWER(name) LIKE ?";
+        // FIXED: Changed column from 'available' to 'is_available' to match the database schema
+        String sql = "UPDATE menu_items SET is_available = ? WHERE LOWER(name) LIKE ?";
         try (Connection conn = AppContextListener.getDataSource().getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setBoolean(1, available);

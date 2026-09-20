@@ -1,86 +1,77 @@
 package com.benedictjeromemart.dao;
 
-import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.Statement;
 import java.util.Optional;
-import java.util.Scanner;
 
-import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import com.benedictjeromemart.listener.AppContextListener;
+import com.benedictjeromemart.util.DBConnectionManager;
 import com.benedictjeromemart.model.User;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 
 public class UserDAOTest {
 
-    private static HikariDataSource dataSource;
+    private HikariDataSource dataSource;
     private UserDAO userDAO;
 
-    @BeforeAll
-    public static void setUpDB() throws Exception {
+    @BeforeEach
+    public void setUp() throws Exception {
+        // Configure H2 in-memory database for testing
         HikariConfig config = new HikariConfig();
-        config.setJdbcUrl("jdbc:h2:mem:testdb;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1");
+        config.setJdbcUrl("jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1");
         config.setUsername("sa");
         config.setPassword("");
         
         dataSource = new HikariDataSource(config);
-        AppContextListener.setDataSource(dataSource);
+        // Inject into DBConnectionManager instead of AppContextListener
+        DBConnectionManager.setDataSource(dataSource);
 
+        // Create users table with all required columns including 'password'
         try (Connection conn = dataSource.getConnection();
-             InputStream is = UserDAOTest.class.getClassLoader().getResourceAsStream("schema.sql")) {
-            if (is != null) {
-                Scanner scanner = new Scanner(is, "UTF-8").useDelimiter(";");
-                try (Statement stmt = conn.createStatement()) {
-                    while (scanner.hasNext()) {
-                        String statement = scanner.next().trim();
-                        if (!statement.isEmpty()) {
-                            stmt.execute(statement);
-                        }
-                    }
-                    
-                    // FIXED: Bump the auto-increment counter forward so test inserts don't collide with seeded data
-                    try {
-                        stmt.execute("ALTER TABLE users ALTER COLUMN id RESTART WITH 100");
-                    } catch (Exception ignore) {
-                        // Safely ignore if the specific H2 version handles identity sequences slightly differently
-                    }
-                }
-            }
+             Statement stmt = conn.createStatement()) {
+            stmt.execute("CREATE TABLE IF NOT EXISTS users (" +
+                    "id INT AUTO_INCREMENT PRIMARY KEY, " +
+                    "name VARCHAR(100) NOT NULL, " +
+                    "email VARCHAR(100) UNIQUE NOT NULL, " +
+                    "password VARCHAR(255) NOT NULL, " +
+                    "role VARCHAR(50) DEFAULT 'CUSTOMER'" +
+                    ")");
         }
+
+        userDAO = new UserDAOImpl();
     }
 
-    @AfterAll
-    public static void tearDownDB() {
+    @AfterEach
+    public void tearDown() throws Exception {
+        try (Connection conn = dataSource.getConnection();
+             Statement stmt = conn.createStatement()) {
+            stmt.execute("DROP TABLE IF EXISTS users");
+        }
         if (dataSource != null) {
             dataSource.close();
         }
-    }
-
-    @BeforeEach
-    public void setUp() {
-        userDAO = new UserDAOImpl();
+        DBConnectionManager.setDataSource(null);
+        DBConnectionManager.initializeProductionDataSource(); // Restore production pool
     }
 
     @Test
     public void testCreateAndFindByEmail() {
-        String testEmail = "testuser_" + System.currentTimeMillis() + "@test.com";
-        User user = new User("Test User", testEmail, "hash123", "CUSTOMER");
-        User created = userDAO.create(user);
+        User user = new User("Test User", "testuser_" + System.currentTimeMillis() + "@test.com", "secret123", "CUSTOMER");
+        
+        User createdUser = userDAO.create(user);
+        assertNotNull(createdUser);
+        assertTrue(createdUser.getId() > 0);
 
-        assertNotNull(created);
-        assertTrue(created.getId() > 0);
-
-        Optional<User> found = userDAO.findByEmail(testEmail);
+        Optional<User> found = userDAO.findByEmail(createdUser.getEmail());
         assertTrue(found.isPresent());
+        assertEquals(createdUser.getEmail(), found.get().getEmail());
         assertEquals("Test User", found.get().getName());
-        assertEquals("CUSTOMER", found.get().getRole());
     }
 }

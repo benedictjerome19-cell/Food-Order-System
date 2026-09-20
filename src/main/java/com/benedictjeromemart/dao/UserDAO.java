@@ -8,4 +8,5 @@ public interface UserDAO {
     User create(User user);
     Optional<User> findByEmail(String email);
     List<User> findAll();
+    User findById(int id);
 }
