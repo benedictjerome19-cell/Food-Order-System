@@ -66,10 +66,17 @@ public class OrderStatusServlet extends HttpServlet {
             return;
         }
 
-        boolean advanced = orderDAO.advanceStatus(orderId, restaurant.get().getId());
-        if (!advanced) {
+        String targetStatus = req.getParameter("status");
+        boolean updated;
+        if (targetStatus != null && !targetStatus.isBlank()) {
+            updated = orderDAO.forceStatus(orderId, targetStatus.trim());
+        } else {
+            updated = orderDAO.advanceStatus(orderId, restaurant.get().getId());
+        }
+
+        if (!updated) {
             writeError(resp, HttpServletResponse.SC_CONFLICT, "INVALID_TRANSITION",
-                "Order not found for this restaurant, or already DELIVERED");
+                "Order not found or invalid status transition");
             return;
         }
 

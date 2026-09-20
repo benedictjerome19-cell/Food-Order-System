@@ -33,10 +33,31 @@ public class MenuItemServlet extends HttpServlet {
             throws ServletException, IOException {
 
         resp.setContentType("application/json");
+        resp.setCharacterEncoding("UTF-8");
         String keyword = req.getParameter("keyword");
         String category = req.getParameter("category");
+        String restaurantIdParam = req.getParameter("restaurantId");
 
-        List<MenuItem> items = menuItemDAO.search(keyword, category);
+        List<MenuItem> items;
+        if (restaurantIdParam != null && !restaurantIdParam.isBlank()) {
+            try {
+                int restaurantId = Integer.parseInt(restaurantIdParam.trim());
+                items = menuItemDAO.findByRestaurantId(restaurantId);
+                // Filter by category or keyword if supplied
+                if (category != null && !category.isBlank() && !"all".equalsIgnoreCase(category)) {
+                    items.removeIf(i -> i.getCategory() == null || !i.getCategory().equalsIgnoreCase(category));
+                }
+                if (keyword != null && !keyword.isBlank()) {
+                    String kw = keyword.toLowerCase();
+                    items.removeIf(i -> (i.getName() == null || !i.getName().toLowerCase().contains(kw)) &&
+                                        (i.getDescription() == null || !i.getDescription().toLowerCase().contains(kw)));
+                }
+            } catch (NumberFormatException e) {
+                items = menuItemDAO.search(keyword, category);
+            }
+        } else {
+            items = menuItemDAO.search(keyword, category);
+        }
 
         JsonObject envelope = new JsonObject();
         envelope.addProperty("success", true);

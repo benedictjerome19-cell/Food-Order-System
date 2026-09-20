@@ -8,191 +8,154 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.benedictjeromemart.listener.AppContextListener;
 import com.benedictjeromemart.model.CartItem;
+import com.benedictjeromemart.model.Order;
+import com.benedictjeromemart.model.OrderItem;
 import com.benedictjeromemart.model.OrderItemDetail;
 import com.benedictjeromemart.model.OrderSummary;
+import com.benedictjeromemart.util.DBConnectionManager;
 
 public class OrderDAOImpl implements OrderDAO {
 
     @Override
-    public int placeOrder(int buyerId, int restaurantId, List<CartItem> cartItems, BigDecimal total,
-                          String deliveryAddress, String customerPhone, String paymentMethod, String transactionId) {
-        String insertOrderSql =
-            "INSERT INTO orders (buyer_id, restaurant_id, status, total_amount, delivery_address, customer_phone, payment_method, payment_status, transaction_id) " +
-            "VALUES (?, ?, 'PENDING', ?, ?, ?, ?, 'PAID', ?)";
-        String insertItemSql =
-            "INSERT INTO order_items (order_id, menu_item_id, quantity, unit_price) " +
-            "SELECT ?, ?, ?, price FROM menu_items WHERE id = ?";
-        String clearCartSql = "DELETE FROM cart_items WHERE user_id = ?";
-
-        Connection conn = null;
-        try {
-            conn = AppContextListener.getDataSource().getConnection();
+    public int createOrder(Order order, List<OrderItem> items) {
+        String insertOrderSql = "INSERT INTO orders (buyer_id, restaurant_id, status, total_amount, delivery_address, customer_phone, payment_method, payment_status, transaction_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String insertItemSql = "INSERT INTO order_items (order_id, menu_item_id, quantity, unit_price) VALUES (?, ?, ?, ?)";
+        
+        int orderId = -1;
+        try (Connection conn = DBConnectionManager.getConnection()) {
             conn.setAutoCommit(false);
-
-            int orderId;
-            try (PreparedStatement stmt = conn.prepareStatement(insertOrderSql, Statement.RETURN_GENERATED_KEYS)) {
-                stmt.setInt(1, buyerId);
-                stmt.setInt(2, restaurantId);
-                stmt.setBigDecimal(3, total);
-                stmt.setString(4, deliveryAddress);
-                stmt.setString(5, customerPhone);
-                stmt.setString(6, paymentMethod);
-                stmt.setString(7, transactionId);
-                stmt.executeUpdate();
-                try (ResultSet rs = stmt.getGeneratedKeys()) {
-                    rs.next();
-                    orderId = rs.getInt(1);
+            try (PreparedStatement psOrder = conn.prepareStatement(insertOrderSql, Statement.RETURN_GENERATED_KEYS)) {
+                psOrder.setInt(1, order.getBuyerId());
+                psOrder.setInt(2, order.getRestaurantId());
+                psOrder.setString(3, order.getStatus() != null ? order.getStatus() : "PENDING");
+                psOrder.setBigDecimal(4, order.getTotalAmount());
+                psOrder.setString(5, order.getDeliveryAddress());
+                psOrder.setString(6, order.getCustomerPhone());
+                psOrder.setString(7, order.getPaymentMethod());
+                psOrder.setString(8, order.getPaymentStatus() != null ? order.getPaymentStatus() : "PENDING");
+                psOrder.setString(9, order.getTransactionId());
+                
+                int affectedRows = psOrder.executeUpdate();
+                if (affectedRows == 0) {
+                    throw new SQLException("Creating order failed, no rows affected.");
+                }
+                
+                try (ResultSet generatedKeys = psOrder.getGeneratedKeys()) {
+                    if (generatedKeys.next()) {
+                        orderId = generatedKeys.getInt(1);
+                    } else {
+                        throw new SQLException("Creating order failed, no ID obtained.");
+                    }
                 }
             }
 
-            try (PreparedStatement stmt = conn.prepareStatement(insertItemSql)) {
-                for (CartItem item : cartItems) {
-                    stmt.setInt(1, orderId);
-                    stmt.setInt(2, item.getMenuItemId());
-                    stmt.setInt(3, item.getQuantity());
-                    stmt.setInt(4, item.getMenuItemId());
-                    stmt.addBatch();
+            try (PreparedStatement psItem = conn.prepareStatement(insertItemSql)) {
+                for (OrderItem item : items) {
+                    psItem.setInt(1, orderId);
+                    psItem.setInt(2, item.getMenuItemId());
+                    psItem.setInt(3, item.getQuantity());
+                    psItem.setBigDecimal(4, item.getUnitPrice());
+                    psItem.addBatch();
                 }
-                stmt.executeBatch();
-            }
-
-            try (PreparedStatement stmt = conn.prepareStatement(clearCartSql)) {
-                stmt.setInt(1, buyerId);
-                stmt.executeUpdate();
+                psItem.executeBatch();
             }
 
             conn.commit();
-            return orderId;
-
         } catch (SQLException e) {
-            if (conn != null) { try { conn.rollback(); } catch (SQLException ignored) {} }
-            throw new RuntimeException("Failed to place order", e);
-        } finally {
-            if (conn != null) { try { conn.setAutoCommit(true); conn.close(); } catch (SQLException ignored) {} }
+            throw new RuntimeException("Failed to create order", e);
         }
+        return orderId;
+    }
+
+    @Override
+    public int placeOrder(Integer buyerId, int restaurantId, List<CartItem> cartItems, BigDecimal totalAmount, String deliveryAddress, String customerPhone, String paymentMethod, String transactionId) {
+        Order order = new Order();
+        order.setBuyerId(buyerId != null ? buyerId : 0);
+        order.setRestaurantId(restaurantId);
+        order.setStatus("PENDING");
+        order.setTotalAmount(totalAmount);
+        order.setDeliveryAddress(deliveryAddress);
+        order.setCustomerPhone(customerPhone);
+        order.setPaymentMethod(paymentMethod);
+        order.setPaymentStatus("PAID");
+        order.setTransactionId(transactionId);
+
+        List<OrderItem> orderItems = new ArrayList<>();
+        if (cartItems != null) {
+            for (CartItem ci : cartItems) {
+                OrderItem oi = new OrderItem();
+                oi.setMenuItemId(ci.getMenuItemId());
+                oi.setQuantity(ci.getQuantity());
+                oi.setUnitPrice(ci.getUnitPrice());
+                orderItems.add(oi);
+            }
+        }
+        return createOrder(order, orderItems);
+    }
+
+    @Override
+    public OrderSummary getOrderById(int orderId) {
+        List<OrderSummary> summaries = runOrdersSummaryQuery("o.id = ?", orderId);
+        return summaries.isEmpty() ? null : summaries.get(0);
+    }
+
+    @Override
+    public List<OrderSummary> getOrdersByBuyerId(int buyerId) {
+        return runOrdersSummaryQuery("o.buyer_id = ?", buyerId);
     }
 
     @Override
     public List<OrderSummary> findByBuyerId(int buyerId) {
-        return runOrderSummaryQuery("WHERE o.buyer_id = ?", buyerId);
+        return getOrdersByBuyerId(buyerId);
+    }
+
+    @Override
+    public List<OrderSummary> getOrdersByRestaurantId(int restaurantId) {
+        return runOrdersSummaryQuery("o.restaurant_id = ?", restaurantId);
     }
 
     @Override
     public List<OrderSummary> findByRestaurantId(int restaurantId) {
-        return runOrderSummaryQuery("WHERE o.restaurant_id = ?", restaurantId);
+        return getOrdersByRestaurantId(restaurantId);
     }
 
     @Override
     public List<OrderSummary> findAll() {
-        return runOrderSummaryQuery("", null);
+        return runOrdersSummaryQuery(null);
     }
 
-    private List<OrderSummary> runOrderSummaryQuery(String whereClause, Integer filterValue) {
-        String sql =
-            "SELECT o.id, o.buyer_id, u.name AS buyer_name, o.restaurant_id, r.name AS restaurant_name, " +
-            "o.status, o.total_amount, o.delivery_address, o.customer_phone, o.payment_method, o.payment_status, o.transaction_id, o.created_at " +
-            "FROM orders o " +
-            "JOIN restaurants r ON r.id = o.restaurant_id " +
-            "JOIN users u ON u.id = o.buyer_id " +
-            (whereClause.isEmpty() ? "" : whereClause + " ") +
-            "ORDER BY o.created_at DESC";
-
-        Map<Integer, OrderSummary> byId = new LinkedHashMap<>();
-        try (Connection conn = AppContextListener.getDataSource().getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            if (filterValue != null) stmt.setInt(1, filterValue);
-
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    OrderSummary summary = new OrderSummary();
-                    summary.setId(rs.getInt("id"));
-                    summary.setBuyerId(rs.getInt("buyer_id"));
-                    summary.setBuyerName(rs.getString("buyer_name"));
-                    summary.setRestaurantId(rs.getInt("restaurant_id"));
-                    summary.setRestaurantName(rs.getString("restaurant_name"));
-                    summary.setStatus(rs.getString("status"));
-                    summary.setTotalAmount(rs.getBigDecimal("total_amount"));
-                    summary.setDeliveryAddress(rs.getString("delivery_address"));
-                    summary.setCustomerPhone(rs.getString("customer_phone"));
-                    summary.setPaymentMethod(rs.getString("payment_method"));
-                    summary.setPaymentStatus(rs.getString("payment_status"));
-                    summary.setTransactionId(rs.getString("transaction_id"));
-                    Timestamp ts = rs.getTimestamp("created_at");
-                    if (ts != null) summary.setCreatedAt(ts.toLocalDateTime());
-                    summary.setItems(new ArrayList<>());
-                    byId.put(summary.getId(), summary);
-                }
-            }
+    @Override
+    public void updateOrderStatus(int orderId, String status) {
+        String sql = "UPDATE orders SET status = ? WHERE id = ?";
+        try (Connection conn = DBConnectionManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, status);
+            ps.setInt(2, orderId);
+            ps.executeUpdate();
         } catch (SQLException e) {
-            throw new RuntimeException("Failed to fetch orders", e);
-        }
-
-        if (!byId.isEmpty()) attachItems(byId);
-        return new ArrayList<>(byId.values());
-    }
-
-    private void attachItems(Map<Integer, OrderSummary> byId) {
-        StringBuilder placeholders = new StringBuilder();
-        for (int i = 0; i < byId.size(); i++) {
-            if (i > 0) placeholders.append(",");
-            placeholders.append("?");
-        }
-
-        String sql =
-            "SELECT oi.order_id, oi.menu_item_id, mi.name, oi.quantity, oi.unit_price " +
-            "FROM order_items oi " +
-            "JOIN menu_items mi ON mi.id = oi.menu_item_id " +
-            "WHERE oi.order_id IN (" + placeholders + ")";
-
-        try (Connection conn = AppContextListener.getDataSource().getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            int i = 1;
-            for (Integer orderId : byId.keySet()) {
-                stmt.setInt(i++, orderId);
-            }
-
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    OrderItemDetail detail = new OrderItemDetail();
-                    detail.setMenuItemId(rs.getInt("menu_item_id"));
-                    detail.setName(rs.getString("name"));
-                    detail.setQuantity(rs.getInt("quantity"));
-                    BigDecimal unitPrice = rs.getBigDecimal("unit_price");
-                    detail.setUnitPrice(unitPrice);
-                    detail.setLineTotal(unitPrice.multiply(BigDecimal.valueOf(detail.getQuantity())));
-
-                    OrderSummary summary = byId.get(rs.getInt("order_id"));
-                    if (summary != null) summary.getItems().add(detail);
-                }
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException("Failed to fetch order items", e);
+            throw new RuntimeException("Failed to update order status", e);
         }
     }
 
     @Override
-    public boolean advanceStatus(int orderId, int restaurantId) {
-        String sql =
-            "UPDATE orders SET status = CASE status " +
-            "WHEN 'PENDING' THEN 'CONFIRMED' " +
-            "WHEN 'CONFIRMED' THEN 'SHIPPED' " +
-            "WHEN 'SHIPPED' THEN 'DELIVERED' " +
-            "ELSE status END " +
-            "WHERE id = ? AND restaurant_id = ? AND status IN ('PENDING','CONFIRMED','SHIPPED')";
+    public boolean advanceStatus(int orderId, int status) {
+        String statusStr = String.valueOf(status);
+        if (status == 1) statusStr = "PENDING";
+        else if (status == 2) statusStr = "PREPARING";
+        else if (status == 3) statusStr = "OUT_FOR_DELIVERY";
+        else if (status == 4) statusStr = "DELIVERED";
 
-        try (Connection conn = AppContextListener.getDataSource().getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, orderId);
-            stmt.setInt(2, restaurantId);
-            return stmt.executeUpdate() > 0;
+        String sql = "UPDATE orders SET status = ? WHERE id = ?";
+        try (Connection conn = DBConnectionManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, statusStr);
+            ps.setInt(2, orderId);
+            return ps.executeUpdate() > 0;
         } catch (SQLException e) {
             throw new RuntimeException("Failed to advance order status", e);
         }
@@ -201,11 +164,12 @@ public class OrderDAOImpl implements OrderDAO {
     @Override
     public boolean forceStatus(int orderId, String status) {
         String sql = "UPDATE orders SET status = ? WHERE id = ?";
-        try (Connection conn = AppContextListener.getDataSource().getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, status);
-            stmt.setInt(2, orderId);
-            return stmt.executeUpdate() > 0;
+        try (Connection conn = DBConnectionManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, status);
+            ps.setInt(2, orderId);
+            int rowsAffected = ps.executeUpdate();
+            return rowsAffected > 0;
         } catch (SQLException e) {
             throw new RuntimeException("Failed to force order status", e);
         }
@@ -214,29 +178,97 @@ public class OrderDAOImpl implements OrderDAO {
     @Override
     public String findStatus(int orderId) {
         String sql = "SELECT status FROM orders WHERE id = ?";
-        try (Connection conn = AppContextListener.getDataSource().getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, orderId);
-            try (ResultSet rs = stmt.executeQuery()) {
-                return rs.next() ? rs.getString("status") : null;
+        try (Connection conn = DBConnectionManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, orderId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getString("status");
+                }
             }
         } catch (SQLException e) {
-            throw new RuntimeException("Failed to fetch order status", e);
+            throw new RuntimeException("Failed to find order status", e);
         }
+        return null;
     }
 
     @Override
-    public boolean hasDeliveredOrder(int buyerId, int restaurantId) {
-        String sql = "SELECT 1 FROM orders WHERE buyer_id = ? AND restaurant_id = ? AND status = 'DELIVERED' LIMIT 1";
-        try (Connection conn = AppContextListener.getDataSource().getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, buyerId);
-            stmt.setInt(2, restaurantId);
-            try (ResultSet rs = stmt.executeQuery()) {
-                return rs.next();
+    public boolean hasDeliveredOrder(int userId, int restaurantId) {
+        String sql = "SELECT COUNT(*) FROM orders WHERE buyer_id = ? AND restaurant_id = ? AND status = 'DELIVERED'";
+        try (Connection conn = DBConnectionManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            ps.setInt(2, restaurantId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1) > 0;
+                }
             }
         } catch (SQLException e) {
-            throw new RuntimeException("Failed to check delivered orders", e);
+            throw new RuntimeException("Failed to check delivered order", e);
         }
+        return false;
+    }
+
+    private List<OrderSummary> runOrdersSummaryQuery(String whereClause, Object... params) {
+        String sql = "SELECT o.id as order_id, o.buyer_id, o.restaurant_id, o.status, o.total_amount, "
+                   + "o.delivery_address, o.customer_phone, o.payment_method, o.payment_status, o.transaction_id, o.created_at, "
+                   + "r.name as restaurant_name, "
+                   + "oi.id as item_id, oi.menu_item_id, oi.quantity, oi.unit_price, "
+                   + "m.name as menu_item_name "
+                   + "FROM orders o "
+                   + "JOIN restaurants r ON o.restaurant_id = r.id "
+                   + "JOIN order_items oi ON o.id = oi.order_id "
+                   + "JOIN menu_items m ON oi.menu_item_id = m.id";
+        
+        if (whereClause != null && !whereClause.trim().isEmpty()) {
+            sql += " WHERE " + whereClause;
+        }
+
+        Map<Integer, OrderSummary> byId = new HashMap<>();
+        try (Connection conn = DBConnectionManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            
+            for (int i = 0; i < params.length; i++) {
+                ps.setObject(i + 1, params[i]);
+            }
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    int orderId = rs.getInt("order_id");
+                    OrderSummary summary = byId.get(orderId);
+                    if (summary == null) {
+                        summary = new OrderSummary();
+                        summary.setId(orderId);
+                        summary.setBuyerId(rs.getInt("buyer_id"));
+                        summary.setRestaurantId(rs.getInt("restaurant_id"));
+                        summary.setRestaurantName(rs.getString("restaurant_name"));
+                        summary.setStatus(rs.getString("status"));
+                        summary.setTotalAmount(rs.getBigDecimal("total_amount"));
+                        summary.setDeliveryAddress(rs.getString("delivery_address"));
+                        summary.setCustomerPhone(rs.getString("customer_phone"));
+                        summary.setPaymentMethod(rs.getString("payment_method"));
+                        summary.setPaymentStatus(rs.getString("payment_status"));
+                        summary.setTransactionId(rs.getString("transaction_id"));
+                        Timestamp ts = rs.getTimestamp("created_at");
+                        if (ts != null) summary.setCreatedAt(ts.toLocalDateTime());
+                        summary.setItems(new ArrayList<>());
+                        byId.put(orderId, summary);
+                    }
+
+                    OrderItemDetail item = new OrderItemDetail();
+                    item.setId(rs.getInt("item_id"));
+                    item.setOrderId(orderId);
+                    item.setMenuItemId(rs.getInt("menu_item_id"));
+                    item.setMenuItemName(rs.getString("menu_item_name"));
+                    item.setQuantity(rs.getInt("quantity"));
+                    item.setUnitPrice(rs.getBigDecimal("unit_price"));
+                    summary.getItems().add(item);
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to fetch orders", e);
+        }
+        return new ArrayList<>(byId.values());
     }
 }

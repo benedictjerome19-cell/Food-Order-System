@@ -39,15 +39,11 @@ public class ChatbotServlet extends HttpServlet {
     private final CartDAO cartDAO = new CartDAOImpl();
 
     private ChatProvider selectProvider() {
-        String flag = System.getProperty("ai.chatbot.provider", "mock");
-        if ("gemini".equalsIgnoreCase(flag)) {
-            try {
-                return new GeminiChatProvider();
-            } catch (Exception e) {
-                return fallbackProvider;
-            }
+        try {
+            return new GeminiChatProvider();
+        } catch (Exception e) {
+            return fallbackProvider;
         }
-        return fallbackProvider;
     }
 
     private String buildMenuContext() {

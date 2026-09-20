@@ -18,7 +18,7 @@ public class AuthFilter implements Filter {
 
     // Endpoints that don't require login
     private static final String[] PUBLIC_PATHS = {
-        "/api/v1/register", "/api/v1/login", "/api/v1/health", "/api/v1/menu-items", "/api/chat", "/api/v1/chat"
+        "/api/v1/register", "/api/v1/login", "/api/v1/health", "/api/v1/menu-items", "/api/v1/restaurants", "/api/chat", "/api/v1/chat"
     };
 
     @Override

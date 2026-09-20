@@ -20,7 +20,8 @@ public class OrderSummary {
     private LocalDateTime createdAt;
     private List<OrderItemDetail> items;
 
-    // Getters and Setters
+    public OrderSummary() {}
+
     public int getId() { return id; }
     public void setId(int id) { this.id = id; }
 

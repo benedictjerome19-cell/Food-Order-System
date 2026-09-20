@@ -11,10 +11,8 @@ public class User {
     private String role;
     private LocalDateTime createdAt;
 
-    // Default no-argument constructor
     public User() {}
 
-    // Parameterized constructor required by unit tests
     public User(String name, String email, String password, String role) {
         this.name = name;
         this.email = email;

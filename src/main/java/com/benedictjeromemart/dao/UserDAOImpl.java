@@ -30,7 +30,7 @@ public class UserDAOImpl implements UserDAO {
 
             stmt.setString(1, user.getName());
             stmt.setString(2, user.getEmail());
-            stmt.setString(3, user.getPassword());
+            stmt.setString(3, user.getPasswordHash() != null ? user.getPasswordHash() : user.getPassword());
             stmt.setString(4, user.getRole() != null ? user.getRole() : "CUSTOMER");
             stmt.executeUpdate();
 
@@ -43,6 +43,16 @@ public class UserDAOImpl implements UserDAO {
         } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "Failed to create user: " + user.getEmail(), e);
             throw new RuntimeException("Database error during user registration: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public boolean registerUser(User user) {
+        try {
+            User created = create(user);
+            return created != null && created.getId() > 0;
+        } catch (Exception e) {
+            return false;
         }
     }
 
@@ -68,6 +78,18 @@ public class UserDAOImpl implements UserDAO {
             LOGGER.log(Level.SEVERE, "Failed to find user by email: " + email, e);
         }
         return Optional.empty();
+    }
+
+    @Override
+    public User loginUser(String email, String password) {
+        Optional<User> opt = findByEmail(email);
+        if (opt.isPresent()) {
+            User user = opt.get();
+            if (user.getPassword() != null && user.getPassword().equals(password)) {
+                return user;
+            }
+        }
+        return null;
     }
 
     @Override
@@ -115,5 +137,35 @@ public class UserDAOImpl implements UserDAO {
             LOGGER.log(Level.SEVERE, "Failed to find user by ID: " + id, e);
         }
         return null;
+    }
+
+    @Override
+    public boolean updateUser(User user) {
+        String sql = "UPDATE users SET name = ?, email = ?, password = ?, role = ? WHERE id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, user.getName());
+            stmt.setString(2, user.getEmail());
+            stmt.setString(3, user.getPassword());
+            stmt.setString(4, user.getRole());
+            stmt.setInt(5, user.getId());
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Failed to update user: " + user.getId(), e);
+            return false;
+        }
+    }
+
+    @Override
+    public boolean deleteUser(int id) {
+        String sql = "DELETE FROM users WHERE id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, id);
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Failed to delete user: " + id, e);
+            return false;
+        }
     }
 }
