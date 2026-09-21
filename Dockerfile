@@ -14,9 +14,9 @@ RUN rm -rf /usr/local/tomcat/webapps/examples
 # Copy the built WAR file and rename it to ROOT.war
 COPY --from=build /app/target/*.war /usr/local/tomcat/webapps/ROOT.war
 
-# Copy entrypoint script to handle dynamic Render ports
-COPY entrypoint.sh /usr/local/tomcat/bin/entrypoint.sh
-RUN chmod +x /usr/local/tomcat/bin/entrypoint.sh
+# Create and configure the entrypoint script natively inside Linux to avoid Windows CRLF errors
+RUN printf '#!/bin/bash\nsed -i "s/port=\"8080\"/port=\"${PORT:-8080}\"/g" /usr/local/tomcat/conf/server.xml\ncatalina.sh run\n' > /usr/local/tomcat/bin/entrypoint.sh \
+    && chmod +x /usr/local/tomcat/bin/entrypoint.sh
 
 # Expose default port
 EXPOSE 8080
