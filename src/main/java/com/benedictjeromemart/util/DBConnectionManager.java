@@ -7,10 +7,6 @@ import java.sql.Statement;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 
-/**
- * Manages database connections using HikariCP and connects directly 
- * to the Render PostgreSQL database.
- */
 public class DBConnectionManager {
 
     private static HikariDataSource dataSource;
@@ -18,25 +14,24 @@ public class DBConnectionManager {
     static {
         try {
             HikariConfig config = new HikariConfig();
-            // Render PostgreSQL connection details
-            config.setJdbcUrl("jdbc:postgresql://dpg-dan44m142hec73d535bg-a/benedictjeromemart_db");
+            // Render PostgreSQL connection string with required SSL mode
+            config.setJdbcUrl("jdbc:postgresql://dpg-dan44m142hec73d535bg-a/benedictjeromemart_db?sslmode=require");
             config.setUsername("benedictjeromemart_db_user");
             config.setPassword("3hAmYmzSSwaSTy9mDgUO7bs9AgiEsrQ4");
             config.setDriverClassName("org.postgresql.Driver");
             
-            // Connection pool tuning parameters for cloud stability
-            config.setMaximumPoolSize(10);
-            config.setMinimumIdle(2);
-            config.setIdleTimeout(30000);
+            config.setMaximumPoolSize(5);
+            config.setMinimumIdle(1);
             config.setConnectionTimeout(30000);
 
             dataSource = new HikariDataSource(config);
             
-            // Automatically initialize database tables on startup
+            // Initialize database schema
             initializeDatabase();
             
         } catch (Exception e) {
-            System.err.println("Failed to initialize HikariCP connection pool: " + e.getMessage());
+            System.err.println("CRITICAL: Failed to initialize database pool: ");
+            e.printStackTrace();
         }
     }
 
@@ -53,14 +48,11 @@ public class DBConnectionManager {
         return dataSource;
     }
 
-    /** Allows unit tests to inject a test data source. */
     public static void setDataSource(HikariDataSource ds) {
         dataSource = ds;
     }
 
-    public static void initializeProductionDataSource() {
-        // Handled automatically by the static block
-    }
+    public static void initializeProductionDataSource() {}
 
     private static void initializeDatabase() {
         String createUsersTable = "CREATE TABLE IF NOT EXISTS users (" +
@@ -76,7 +68,8 @@ public class DBConnectionManager {
             stmt.execute(createUsersTable);
             System.out.println("[DB] Users table verified/created successfully in PostgreSQL.");
         } catch (SQLException e) {
-            System.err.println("Error initializing database tables: " + e.getMessage());
+            System.err.println("CRITICAL: Error initializing database tables: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 }
