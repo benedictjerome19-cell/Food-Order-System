@@ -6,8 +6,8 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.benedictjerome</groupId>
-    <artifactId>benedictjeromemart</artifactId>
-    <version>0.1.0</version>
+    <artifactId>Food-Order-System</artifactId>
+    <version>1.0-SNAPSHOT</version>
     <packaging>war</packaging>
 
     <properties>
@@ -24,21 +24,21 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- JSTL for JSP tag libraries (c:out escaping, c:forEach, etc.) -->
+        <!-- JSTL for JSP tag libraries -->
         <dependency>
             <groupId>javax.servlet</groupId>
             <artifactId>jstl</artifactId>
             <version>1.2</version>
         </dependency>
 
-        <!-- H2: kept for local development -->
+        <!-- H2 Database for local development -->
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
             <version>2.2.224</version>
         </dependency>
 
-        <!-- PostgreSQL: used on Render so data survives restarts and deploys -->
+        <!-- PostgreSQL for Render deployment -->
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
@@ -97,7 +97,7 @@
     </dependencies>
 
     <build>
-        <finalName>benedictjeromemart</finalName>
+        <finalName>Food-Order-System</finalName>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
