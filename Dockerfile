@@ -1,15 +1,18 @@
-FROM maven:3.9-eclipse-temurin-17 AS build
-COPY . /app
+# Stage 1: Build the application using Maven
+FROM maven:3.8.5-openjdk-17 AS build
 WORKDIR /app
+COPY . .
 RUN mvn clean package -DskipTests
 
-FROM tomcat:9.0-jdk17-temurin
-# Deploy application as ROOT.war
-RUN rm -rf /usr/local/tomcat/webapps/*
+# Stage 2: Deploy to Apache Tomcat
+FROM tomcat:9.0-jdk17
+
+# Remove Tomcat's default landing page/apps
+RUN rm -rf /usr/local/tomcat/webapps/ROOT
+RUN rm -rf /usr/local/tomcat/webapps/examples
+
+# Copy the built WAR file from the build stage and rename it to ROOT.war
 COPY --from=build /app/target/*.war /usr/local/tomcat/webapps/ROOT.war
 
-# Bind Tomcat to Render's default port
-RUN sed -i 's/port="8080"/port="10000"/g' /usr/local/tomcat/conf/server.xml
-EXPOSE 10000
-
+EXPOSE 8080
 CMD ["catalina.sh", "run"]
