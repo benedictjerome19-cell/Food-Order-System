@@ -185,7 +185,6 @@ public class AppContextListener implements ServletContextListener {
         }
     }
 
-    /** Robust URL parser that safely handles special characters in passwords. */
     static String[] parsePostgresUrl(String raw) throws Exception {
         String url = raw.trim();
         if (url.startsWith("postgres://")) {
