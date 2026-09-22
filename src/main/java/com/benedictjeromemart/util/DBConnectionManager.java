@@ -7,6 +7,10 @@ import java.sql.Statement;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 
+/**
+ * Manages database connections using HikariCP and connects securely 
+ * to the Render PostgreSQL production database.
+ */
 public class DBConnectionManager {
 
     private static HikariDataSource dataSource;
@@ -20,13 +24,14 @@ public class DBConnectionManager {
             config.setPassword("3hAmYmzSSwaSTy9mDgUO7bs9AgiEsrQ4");
             config.setDriverClassName("org.postgresql.Driver");
             
+            // Connection pool tuning parameters for cloud stability
             config.setMaximumPoolSize(5);
             config.setMinimumIdle(1);
             config.setConnectionTimeout(30000);
 
             dataSource = new HikariDataSource(config);
             
-            // Initialize database schema
+            // Initialize database schema on startup
             initializeDatabase();
             
         } catch (Exception e) {
@@ -48,11 +53,14 @@ public class DBConnectionManager {
         return dataSource;
     }
 
+    /** Allows unit tests to inject a test data source. */
     public static void setDataSource(HikariDataSource ds) {
         dataSource = ds;
     }
 
-    public static void initializeProductionDataSource() {}
+    public static void initializeProductionDataSource() {
+        // Handled automatically by the static block
+    }
 
     private static void initializeDatabase() {
         String createUsersTable = "CREATE TABLE IF NOT EXISTS users (" +
