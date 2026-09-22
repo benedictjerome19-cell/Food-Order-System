@@ -11,7 +11,6 @@ import javax.servlet.http.HttpServletResponse;
 
 import com.benedictjeromemart.service.UserService;
 
-// FIX 1: Updated the mapping to match the HTML form exactly
 @WebServlet("/register")
 public class RegisterServlet extends HttpServlet {
 
@@ -21,7 +20,12 @@ public class RegisterServlet extends HttpServlet {
     protected void doPost(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
 
+        // Support both "name" and "fullname" to prevent null parameter bugs
         String name = req.getParameter("name");
+        if (name == null || name.trim().isEmpty()) {
+            name = req.getParameter("fullname");
+        }
+        
         String email = req.getParameter("email");
         String password = req.getParameter("password");
         String role = req.getParameter("role");
@@ -35,12 +39,12 @@ public class RegisterServlet extends HttpServlet {
             // Attempt to register the user in the PostgreSQL database
             userService.register(name, email, password, role);
 
-            // FIX 2: Redirect to the login page on success
+            // Redirect to the login page on success
             String successMessage = URLEncoder.encode("Registration successful! Please sign in.", "UTF-8");
             resp.sendRedirect(req.getContextPath() + "/login.jsp?success=" + successMessage);
 
         } catch (IllegalArgumentException e) {
-            // FIX 3: Redirect back to the register page with the error message if it fails
+            // Redirect back to the register page with the error message if it fails
             String errorMessage = URLEncoder.encode(e.getMessage(), "UTF-8");
             resp.sendRedirect(req.getContextPath() + "/register.jsp?error=" + errorMessage);
         }
