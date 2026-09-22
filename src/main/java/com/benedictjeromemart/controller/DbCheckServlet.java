@@ -10,7 +10,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import com.benedictjeromemart.listener.AppContextListener;
+import com.benedictjeromemart.util.DBConnectionManager;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -23,7 +23,8 @@ public class DbCheckServlet extends HttpServlet {
         JsonObject result = new JsonObject();
         JsonArray tablesList = new JsonArray();
 
-        try (Connection conn = AppContextListener.getDataSource().getConnection();
+        // Updated to use DBConnectionManager directly for unified connection pooling
+        try (Connection conn = DBConnectionManager.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery("SELECT table_name FROM information_schema.tables WHERE table_schema='public'")) {
             
