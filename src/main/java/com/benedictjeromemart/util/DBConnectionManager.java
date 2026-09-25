@@ -4,6 +4,8 @@ import java.net.URI;
 import java.sql.Connection;
 import java.sql.SQLException;
 
+import javax.sql.DataSource;
+
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 
@@ -14,20 +16,30 @@ public class DBConnectionManager {
         try {
             HikariConfig config = new HikariConfig();
 
-            // Check if running on Render or cloud environment
-            String databaseUrl = System.getenv("postgresql://benedictjeromemart_db_user:3hAmYmzSSwaSTy9mDgUO7bs9AgiEsrQ4@dpg-dan44m142hec73d535bg-a/benedictjeromemart_db");
+            // Look up the environment variable key set on Render
+            String databaseUrl = System.getenv("DATABASE_URL");
+            if (databaseUrl == null || databaseUrl.isEmpty()) {
+                databaseUrl = System.getenv("JDBC_DATABASE_URL");
+            }
 
             if (databaseUrl != null && !databaseUrl.isEmpty()) {
-                // Parse Render's postgres:// URL format for JDBC
-                if (databaseUrl.startsWith("postgres://")) {
-                    URI dbUri = new URI(databaseUrl);
-                    String username = dbUri.getUserInfo().split(":")[0];
-                    String password = dbUri.getUserInfo().split(":")[1];
-                    String jdbcUrl = "jdbc:postgresql://" + dbUri.getHost() + ":" + dbUri.getPort() + dbUri.getPath();
+                // Parse Render's postgres:// or postgresql:// URL format for JDBC
+                if (databaseUrl.startsWith("postgres://") || databaseUrl.startsWith("postgresql://")) {
+                    URI dbUri = new URI(databaseUrl.replace("postgresql://", "postgres://"));
+                    String userInfo = dbUri.getUserInfo();
+                    
+                    if (userInfo != null && userInfo.contains(":")) {
+                        String username = userInfo.split(":")[0];
+                        String password = userInfo.split(":")[1];
+                        int port = dbUri.getPort() == -1 ? 5432 : dbUri.getPort();
+                        String jdbcUrl = "jdbc:postgresql://" + dbUri.getHost() + ":" + port + dbUri.getPath();
 
-                    config.setJdbcUrl(jdbcUrl);
-                    config.setUsername(username);
-                    config.setPassword(password);
+                        config.setJdbcUrl(jdbcUrl);
+                        config.setUsername(username);
+                        config.setPassword(password);
+                    } else {
+                        config.setJdbcUrl(databaseUrl);
+                    }
                 } else {
                     config.setJdbcUrl(databaseUrl);
                 }
@@ -55,5 +67,15 @@ public class DBConnectionManager {
             throw new SQLException("Database connection pool is not initialized.");
         }
         return dataSource.getConnection();
+    }
+
+    public static DataSource getDataSource() {
+        return dataSource;
+    }
+
+    public static void closePool() {
+        if (dataSource != null && !dataSource.isClosed()) {
+            dataSource.close();
+        }
     }
 }
