@@ -4,8 +4,6 @@ import java.net.URI;
 import java.sql.Connection;
 import java.sql.SQLException;
 
-import javax.sql.DataSource;
-
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 
@@ -16,10 +14,10 @@ public class DBConnectionManager {
         try {
             HikariConfig config = new HikariConfig();
 
-            // Look up the environment variable key set on Render
-            String databaseUrl = System.getenv("DATABASE_URL");
+            // Correctly look up the environment variable key name set on Render
+            String databaseUrl = System.getenv("postgresql://benedictjeromemart_db_user:3hAmYmzSSwaSTy9mDgUO7bs9AgiEsrQ4@dpg-dan44m142hec73d535bg-a/benedictjeromemart_db");
             if (databaseUrl == null || databaseUrl.isEmpty()) {
-                databaseUrl = System.getenv("JDBC_DATABASE_URL");
+                databaseUrl = System.getenv("jdbc:postgresql://localhost:5432/benedictjeromemart");
             }
 
             if (databaseUrl != null && !databaseUrl.isEmpty()) {
@@ -45,9 +43,9 @@ public class DBConnectionManager {
                 }
             } else {
                 // Local Development Fallback
-                config.setJdbcUrl("jdbc:postgresql://localhost:5432/jerome_zom");
+                config.setJdbcUrl("jdbc:postgresql://localhost:5432/benedictjeromemart");
                 config.setUsername("postgres");
-                config.setPassword("postgres");
+                config.setPassword("Btechaids@2008");
             }
 
             config.setMaximumPoolSize(10);
@@ -69,7 +67,7 @@ public class DBConnectionManager {
         return dataSource.getConnection();
     }
 
-    public static DataSource getDataSource() {
+    public static HikariDataSource getDataSource() {
         return dataSource;
     }
 
