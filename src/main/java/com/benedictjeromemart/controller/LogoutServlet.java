@@ -9,11 +9,9 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
-// FIX 1: Update the mapping to match the HTML navigation link
-@WebServlet("/logout")
+@WebServlet(urlPatterns = {"/logout", "/api/v1/logout"})
 public class LogoutServlet extends HttpServlet {
 
-    // FIX 2: Add doGet because clicking an HTML <a> link triggers a GET request
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
@@ -33,7 +31,7 @@ public class LogoutServlet extends HttpServlet {
             session.invalidate();
         }
         
-        // FIX 3: Redirect the user smoothly back to the login page
+        // Redirect smoothly back to the login page
         resp.sendRedirect(req.getContextPath() + "/login.jsp");
     }
 }

@@ -1,8 +1,6 @@
 package com.benedictjeromemart.controller;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
@@ -10,19 +8,16 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
-import com.google.gson.JsonObject;
 import com.benedictjeromemart.dao.MenuItemDAO;
 import com.benedictjeromemart.dao.MenuItemDAOImpl;
 import com.benedictjeromemart.dao.OrderDAO;
 import com.benedictjeromemart.dao.OrderDAOImpl;
 import com.benedictjeromemart.dao.UserDAO;
 import com.benedictjeromemart.dao.UserDAOImpl;
-import com.benedictjeromemart.model.AdminUserView;
-import com.benedictjeromemart.model.User;
 import com.benedictjeromemart.util.JsonUtil;
+import com.google.gson.JsonObject;
 
 @WebServlet(urlPatterns = {
-    "/api/v1/admin/users",
     "/api/v1/admin/orders",
     "/api/v1/admin/menu-items"
 })
@@ -34,7 +29,12 @@ public class AdminServlet extends HttpServlet {
 
     private boolean isAdmin(HttpServletRequest req) {
         HttpSession session = req.getSession(false);
-        return session != null && "ADMIN".equals(session.getAttribute("userRole"));
+        if (session == null) return false;
+        String role = (String) session.getAttribute("userRole");
+        if (role != null) {
+            role = role.trim().toUpperCase();
+        }
+        return "ADMIN".equals(role) || "DEVELOPER".equals(role);
     }
 
     private void writeError(HttpServletResponse resp, int status, String code, String message) throws IOException {
@@ -66,14 +66,8 @@ public class AdminServlet extends HttpServlet {
             return;
         }
 
-        String path = req.getServletPath();
-        if (path.endsWith("/admin/users")) {
-            List<AdminUserView> views = new ArrayList<>();
-            for (User u : userDAO.findAll()) {
-                views.add(new AdminUserView(u));
-            }
-            writeOk(resp, views);
-        } else if (path.endsWith("/admin/orders")) {
+        String path = req.getRequestURI();
+        if (path.endsWith("/admin/orders")) {
             writeOk(resp, orderDAO.findAll());
         } else {
             writeError(resp, HttpServletResponse.SC_NOT_FOUND, "NOT_FOUND", "Unknown admin resource");
@@ -87,7 +81,7 @@ public class AdminServlet extends HttpServlet {
             return;
         }
 
-        String path = req.getServletPath();
+        String path = req.getRequestURI();
         if (path.endsWith("/admin/menu-items")) {
             String idParam = req.getParameter("id");
             if (idParam == null || idParam.isBlank()) {

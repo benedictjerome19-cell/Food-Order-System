@@ -2,49 +2,44 @@ package com.benedictjeromemart.util;
 
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.sql.Statement;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 
-/**
- * Manages database connections using HikariCP and connects securely 
- * to the Render PostgreSQL production database.
- */
 public class DBConnectionManager {
-
     private static HikariDataSource dataSource;
+    private static String initErrorDetail = "Not initialized yet";
 
     static {
         try {
+            // Explicitly load the PostgreSQL driver
+            Class.forName("org.postgresql.Driver");
+
             HikariConfig config = new HikariConfig();
-            // Render PostgreSQL connection string with required SSL mode
-            config.setJdbcUrl("jdbc:postgresql://dpg-dan44m142hec73d535bg-a/benedictjeromemart_db?sslmode=require");
-            config.setUsername("benedictjeromemart_db_user");
-            config.setPassword("3hAmYmzSSwaSTy9mDgUO7bs9AgiEsrQ4");
-            config.setDriverClassName("org.postgresql.Driver");
             
-            // Connection pool tuning parameters for cloud stability
-            config.setMaximumPoolSize(5);
-            config.setMinimumIdle(1);
+            config.setJdbcUrl("jdbc:postgresql://localhost:5432/benedictjeromemart");
+            config.setUsername("postgres");
+            
+            // ---> PUT YOUR ACTUAL POSTGRESQL PASSWORD HERE <---
+            config.setPassword("Btechaids@2008");
+
+            config.setMaximumPoolSize(10);
+            config.setMinimumIdle(2);
+            config.setIdleTimeout(30000);
             config.setConnectionTimeout(30000);
 
             dataSource = new HikariDataSource(config);
-            
-            // Initialize database schema on startup
-            initializeDatabase();
-            
-        } catch (Exception e) {
-            System.err.println("CRITICAL: Failed to initialize database pool: ");
+            System.out.println("[DB] HikariCP PostgreSQL DataSource initialized successfully.");
+        } catch (Throwable e) {
+            initErrorDetail = e.getClass().getName() + ": " + e.getMessage();
+            System.err.println("[DB] FATAL ERROR: Failed to initialize HikariCP connection pool: " + initErrorDetail);
             e.printStackTrace();
         }
     }
 
-    private DBConnectionManager() {}
-
     public static Connection getConnection() throws SQLException {
-        if (dataSource == null || dataSource.isClosed()) {
-            throw new SQLException("Database connection pool is not initialized.");
+        if (dataSource == null) {
+            throw new SQLException("Database connection pool is not initialized. Root cause: " + initErrorDetail);
         }
         return dataSource.getConnection();
     }
@@ -53,31 +48,10 @@ public class DBConnectionManager {
         return dataSource;
     }
 
-    /** Allows unit tests to inject a test data source. */
-    public static void setDataSource(HikariDataSource ds) {
-        dataSource = ds;
-    }
-
-    public static void initializeProductionDataSource() {
-        // Handled automatically by the static block
-    }
-
-    private static void initializeDatabase() {
-        String createUsersTable = "CREATE TABLE IF NOT EXISTS users (" +
-                "id SERIAL PRIMARY KEY, " +
-                "fullname VARCHAR(100) NOT NULL, " +
-                "email VARCHAR(100) UNIQUE NOT NULL, " +
-                "password VARCHAR(255) NOT NULL, " +
-                "role VARCHAR(50) DEFAULT 'customer'" +
-                ");";
-
-        try (Connection conn = dataSource.getConnection();
-             Statement stmt = conn.createStatement()) {
-            stmt.execute(createUsersTable);
-            System.out.println("[DB] Users table verified/created successfully in PostgreSQL.");
-        } catch (SQLException e) {
-            System.err.println("CRITICAL: Error initializing database tables: " + e.getMessage());
-            e.printStackTrace();
+    public static void closePool() {
+        if (dataSource != null && !dataSource.isClosed()) {
+            dataSource.close();
+            System.out.println("[DB] HikariCP PostgreSQL DataSource closed successfully.");
         }
     }
 }

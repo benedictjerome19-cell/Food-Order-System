@@ -7,14 +7,31 @@
 
     <display-name>BenedictJeromeMart</display-name>
 
+    <!-- Session Timeout Configuration (30 Minutes) -->
     <session-config>
         <session-timeout>30</session-timeout>
     </session-config>
 
+    <!-- Default Landing Pages -->
     <welcome-file-list>
         <welcome-file>home.jsp</welcome-file>
-        <welcome-file>menu.jsp</welcome-file>
         <welcome-file>login.jsp</welcome-file>
     </welcome-file-list>
+
+    <!-- Admin Authentication & Security Filter Mapping -->
+    <filter>
+        <filter-name>AdminAuthFilter</filter-name>
+        <filter-class>com.benedictjeromemart.filter.AdminAuthFilter</filter-class>
+    </filter>
+    <filter-mapping>
+        <filter-name>AdminAuthFilter</filter-name>
+        <url-pattern>/admin-dashboard.jsp</url-pattern>
+    </filter-mapping>
+
+    <!-- Graceful Error Handling -->
+    <error-page>
+        <error-code>404</error-code>
+        <location>/login.jsp</location>
+    </error-page>
 
 </web-app>

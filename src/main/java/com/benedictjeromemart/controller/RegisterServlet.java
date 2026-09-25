@@ -1,7 +1,10 @@
 package com.benedictjeromemart.controller;
 
 import java.io.IOException;
-import java.net.URLEncoder;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -9,18 +12,18 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import com.benedictjeromemart.service.UserService;
+import com.benedictjeromemart.util.DBConnectionManager;
 
-@WebServlet("/register")
+@WebServlet(name = "RegisterServlet", urlPatterns = {"/register", "/api/v1/register"})
 public class RegisterServlet extends HttpServlet {
-
-    private final UserService userService = new UserService();
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
+        
+        resp.setContentType("application/json");
+        resp.setCharacterEncoding("UTF-8");
 
-        // Support both "name" and "fullname" to prevent null parameter bugs
         String name = req.getParameter("name");
         if (name == null || name.trim().isEmpty()) {
             name = req.getParameter("fullname");
@@ -30,23 +33,48 @@ public class RegisterServlet extends HttpServlet {
         String password = req.getParameter("password");
         String role = req.getParameter("role");
 
-        // Set a default role if the frontend form doesn't provide one
         if (role == null || role.trim().isEmpty()) {
             role = "CUSTOMER";
         }
 
-        try {
-            // Attempt to register the user in the PostgreSQL database
-            userService.register(name, email, password, role);
+        if (email == null || password == null || email.trim().isEmpty() || password.trim().isEmpty()) {
+            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            resp.getWriter().write("{\"success\":false,\"error\":{\"message\":\"Email and password are required.\"}}");
+            return;
+        }
 
-            // Redirect to the login page on success
-            String successMessage = URLEncoder.encode("Registration successful! Please sign in.", "UTF-8");
-            resp.sendRedirect(req.getContextPath() + "/login.jsp?success=" + successMessage);
+        String checkSql = "SELECT id FROM users WHERE email = ?";
+        String insertSql = "INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)";
 
-        } catch (IllegalArgumentException e) {
-            // Redirect back to the register page with the error message if it fails
-            String errorMessage = URLEncoder.encode(e.getMessage(), "UTF-8");
-            resp.sendRedirect(req.getContextPath() + "/register.jsp?error=" + errorMessage);
+        try (Connection conn = DBConnectionManager.getConnection()) {
+            // Check if email already exists
+            try (PreparedStatement checkStmt = conn.prepareStatement(checkSql)) {
+                checkStmt.setString(1, email);
+                try (ResultSet rs = checkStmt.executeQuery()) {
+                    if (rs.next()) {
+                        resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                        resp.getWriter().write("{\"success\":false,\"error\":{\"message\":\"Email already registered!\"}}");
+                        return;
+                    }
+                }
+            }
+
+            // Insert new user into database
+            try (PreparedStatement insertStmt = conn.prepareStatement(insertSql)) {
+                insertStmt.setString(1, name != null ? name : "User");
+                insertStmt.setString(2, email);
+                insertStmt.setString(3, password);
+                insertStmt.setString(4, role);
+                insertStmt.executeUpdate();
+            }
+
+            resp.getWriter().write("{\"success\":true,\"message\":\"Account created successfully! Redirecting to login...\"}");
+
+        } catch (SQLException e) {
+            System.err.println("[DB] Registration error: " + e.getMessage());
+            e.printStackTrace();
+            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            resp.getWriter().write("{\"success\":false,\"error\":{\"message\":\"Database error: " + e.getMessage().replace("\"", "'") + "\"}}");
         }
     }
 }

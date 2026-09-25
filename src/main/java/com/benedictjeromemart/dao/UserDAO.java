@@ -1,8 +1,9 @@
 package com.benedictjeromemart.dao;
 
-import com.benedictjeromemart.model.User;
 import java.util.List;
 import java.util.Optional;
+
+import com.benedictjeromemart.model.User;
 
 public interface UserDAO {
     User create(User user);

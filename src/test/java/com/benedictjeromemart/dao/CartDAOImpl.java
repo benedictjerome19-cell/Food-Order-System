@@ -2,7 +2,6 @@ package com.benedictjeromemart.dao;
 
 import java.util.ArrayList;
 import java.util.List;
-
 import com.benedictjeromemart.model.CartItem;
 
 public class CartDAOImpl implements CartDAO {

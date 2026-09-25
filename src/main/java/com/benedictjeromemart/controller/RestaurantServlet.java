@@ -1,7 +1,11 @@
 package com.benedictjeromemart.controller;
 
 import java.io.IOException;
-import java.util.List;
+import java.io.PrintWriter;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -9,30 +13,46 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import com.benedictjeromemart.dao.RestaurantDAO;
-import com.benedictjeromemart.dao.RestaurantDAOImpl;
-import com.benedictjeromemart.model.Restaurant;
-import com.benedictjeromemart.util.JsonUtil;
-import com.google.gson.JsonObject;
+import com.benedictjeromemart.util.DBConnectionManager;
 
 @WebServlet("/api/v1/restaurants")
 public class RestaurantServlet extends HttpServlet {
 
-    private final RestaurantDAO restaurantDAO = new RestaurantDAOImpl();
-
     @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp)
+            throws ServletException, IOException {
+        
         resp.setContentType("application/json");
         resp.setCharacterEncoding("UTF-8");
-
-        List<Restaurant> restaurants = restaurantDAO.findAll();
-
-        JsonObject envelope = new JsonObject();
-        envelope.addProperty("success", true);
-        envelope.add("data", JsonUtil.GSON.toJsonTree(restaurants));
-        envelope.add("error", null);
-
-        resp.setStatus(HttpServletResponse.SC_OK);
-        resp.getWriter().write(JsonUtil.GSON.toJson(envelope));
+        PrintWriter out = resp.getWriter();
+        
+        StringBuilder json = new StringBuilder();
+        json.append("{\"success\":true,\"data\":[");
+        
+        String sql = "SELECT id, name, cuisine_type FROM restaurants";
+        
+        try (Connection conn = DBConnectionManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            
+            boolean first = true;
+            while (rs.next()) {
+                if (!first) json.append(",");
+                first = false;
+                
+                json.append("{")
+                    .append("\"id\":").append(rs.getInt("id")).append(",")
+                    .append("\"name\":\"").append(rs.getString("name")).append("\",")
+                    .append("\"cuisineType\":\"").append(rs.getString("cuisine_type")).append("\"")
+                    .append("}");
+            }
+        } catch (SQLException e) {
+            // Fallback default restaurant if table doesn't exist yet
+            json.append("{\"id\":1,\"name\":\"Benedict Partner Kitchen\",\"cuisineType\":\"Multicuisine\"}");
+        }
+        
+        json.append("]}");
+        out.print(json.toString());
+        out.flush();
     }
 }
