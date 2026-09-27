@@ -290,7 +290,7 @@ let allItems = [];
 let currentCategory = 'all';
 let selectedPayment = 'cash';
 let cartTotal = 0;
-let currentCartItems = []; // Cached cart items for checkout payload
+let currentCartItems = [];
 
 const categoryImages = {
     'burger': 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&q=80',
@@ -315,19 +315,16 @@ const categoryIcons = {
 };
 
 function getImage(item) {
-    // 1. Check database image_url or imageUrl if provided and valid
     const dbImg = item.imageUrl || item.image_url;
     if (dbImg && typeof dbImg === 'string' && dbImg.trim() !== '') {
         return dbImg;
     }
     
-    // 2. Specific fallbacks for items with empty DB image fields (IDs 1, 2, 3)
     const name = (item.name || '').toLowerCase();
     if (name.includes('paneer butter masala')) return 'https://images.unsplash.com/photo-1589302168068-964664d93dc0?w=400&q=80';
     if (name.includes('veg biryani')) return 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=400&q=80';
     if (name.includes('gulab jamun')) return 'https://images.unsplash.com/photo-1607920592519-bab2a80efd77?w=400&q=80';
 
-    // 3. Fallback based on category or name matching
     const cat = (item.category || '').toLowerCase();
     for (const key of Object.keys(categoryImages)) {
         if (cat.includes(key) || name.includes(key)) return categoryImages[key];
