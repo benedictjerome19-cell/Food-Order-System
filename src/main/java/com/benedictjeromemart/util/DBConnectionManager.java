@@ -11,29 +11,34 @@ public class DBConnectionManager {
 
     static {
         try {
-            // Explicitly load the PostgreSQL driver to prevent "No suitable driver" errors
             Class.forName("org.postgresql.Driver");
 
             HikariConfig config = new HikariConfig();
-
-            // Look up the standard environment variable name used by Render / Supabase
             String databaseUrl = System.getenv("DATABASE_URL");
 
             if (databaseUrl != null && !databaseUrl.trim().isEmpty()) {
                 databaseUrl = databaseUrl.trim();
                 
-                // Convert Render or Supabase URL format directly to JDBC format
+                // Convert Render / Supabase URL format to JDBC format
                 if (databaseUrl.startsWith("postgres://")) {
                     databaseUrl = databaseUrl.replace("postgres://", "jdbc:postgresql://");
                 } else if (databaseUrl.startsWith("postgresql://")) {
                     databaseUrl = databaseUrl.replace("postgresql://", "jdbc:postgresql://");
                 }
                 
-                // Set the JDBC URL (PostgreSQL driver natively parses embedded credentials & percent-encoding)
+                // Ensure Supabase SSL mode requirement is present
+                if (databaseUrl.contains("supabase.co") && !databaseUrl.contains("sslmode=")) {
+                    if (databaseUrl.contains("?")) {
+                        databaseUrl += "&sslmode=require";
+                    } else {
+                        databaseUrl += "?sslmode=require";
+                    }
+                }
+                
                 config.setJdbcUrl(databaseUrl);
             } else {
                 // Local Development Fallback
-                config.setJdbcUrl("jdbc:postgresql://localhost:5432/postgres");
+                config.setJdbcUrl("jdbc:postgresql://localhost:5432/postgres?sslmode=disable");
                 config.setUsername("postgres");
                 config.setPassword("Btechaids@2008");
             }
