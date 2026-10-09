@@ -20,61 +20,65 @@
         .dashboard-grid {
             display: grid;
             grid-template-columns: 1fr;
-            gap: 2rem;
+            gap: 1.5rem;
             max-width: 1200px;
-            margin: 2rem auto;
+            margin: 1.5rem auto;
             padding: 0 1rem;
         }
         .dashboard-card {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid var(--border-glass);
-            border-radius: 16px;
-            padding: 1.8rem;
-            backdrop-filter: blur(16px);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-        }
-        .order-owner-card {
-            background: rgba(0,0,0,0.25);
-            border: 1px solid var(--border-glass);
+            background: var(--bg-card);
+            border: 1px solid var(--border);
             border-radius: 12px;
             padding: 1.25rem;
+        }
+        .order-owner-card {
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
             margin-bottom: 1rem;
         }
         .status-badge {
             display: inline-block;
-            padding: 4px 12px;
+            padding: 3px 10px;
             border-radius: 20px;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             font-weight: 700;
             text-transform: uppercase;
         }
-        .status-PENDING { background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid #f59e0b; }
-        .status-PREPARING { background: rgba(59, 130, 246, 0.2); color: #3b82f6; border: 1px solid #3b82f6; }
-        .status-OUT_FOR_DELIVERY { background: rgba(168, 85, 247, 0.2); color: #a855f7; border: 1px solid #a855f7; }
-        .status-DELIVERED { background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid #10b981; }
-        .status-CANCELLED { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid #ef4444; }
+        .status-PENDING { background: #fef3c7; color: #d97706; border: 1px solid #fde68a; }
+        .status-PREPARING { background: #dbeafe; color: #2563eb; border: 1px solid #bfdbfe; }
+        .status-OUT_FOR_DELIVERY { background: #f3e8ff; color: #9333ea; border: 1px solid #e9d5ff; }
+        .status-DELIVERED { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+        .status-CANCELLED { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
         
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+        }
         .editable-table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 1rem;
+            min-width: 500px;
         }
         .editable-table th, .editable-table td {
-            padding: 12px;
+            padding: 10px;
             text-align: left;
-            border-bottom: 1px solid var(--border-glass);
+            border-bottom: 1px solid var(--border);
+            font-size: 0.9rem;
         }
         .editable-table th {
-            color: var(--accent-gold);
+            color: var(--text-muted);
             font-weight: 700;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             text-transform: uppercase;
         }
         .form-input-sm {
-            background: rgba(10,9,14,0.8);
-            border: 1px solid var(--border-glass);
-            color: #fff;
-            padding: 6px 10px;
+            background: #fff;
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 6px 8px;
             border-radius: 6px;
             font-size: 0.9rem;
             width: 100%;
@@ -100,12 +104,12 @@
     <div class="dashboard-grid">
         <!-- Live Incoming Orders Section -->
         <div class="dashboard-card">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
                 <div>
-                    <h2 style="font-size: 1.6rem; font-weight: 800; color: #fff;">📦 Live Incoming Orders</h2>
-                    <p style="color: var(--text-muted); font-size: 0.9rem;">View customer delivery addresses, phone numbers, dish details, and advance order status.</p>
+                    <h2 style="font-size: 1.3rem; font-weight: 800;">📦 Live Incoming Orders</h2>
+                    <p style="color: var(--text-muted); font-size: 0.85rem;">View delivery details, dishes, and advance order status.</p>
                 </div>
-                <button onclick="fetchOwnerOrders()" class="btn-outline-sm" style="cursor: pointer;">🔄 Refresh Orders</button>
+                <button onclick="fetchOwnerOrders()" class="btn-outline-sm">🔄 Refresh</button>
             </div>
             <div id="owner-orders-list">
                 <p style="color: var(--text-muted);">Loading live orders...</p>
@@ -114,12 +118,12 @@
 
         <!-- Editable Menu & Inventory Section -->
         <div class="dashboard-card">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
                 <div>
-                    <h2 style="font-size: 1.6rem; font-weight: 800; color: #fff;">🍔 Editable Hotel Menu & Inventory</h2>
-                    <p style="color: var(--text-muted); font-size: 0.9rem;">Edit dish prices, stock quantities, and availability status in real time.</p>
+                    <h2 style="font-size: 1.3rem; font-weight: 800;">🍔 Editable Menu & Inventory</h2>
+                    <p style="color: var(--text-muted); font-size: 0.85rem;">Edit dish prices, stock quantities, and availability.</p>
                 </div>
-                <button onclick="fetchOwnerMenu()" class="btn-outline-sm" style="cursor: pointer;">🔄 Reload Menu</button>
+                <button onclick="fetchOwnerMenu()" class="btn-outline-sm">🔄 Reload</button>
             </div>
 
             <div id="owner-menu-list">
@@ -155,39 +159,39 @@
                 let itemsHtml = '';
                 if (order.items && order.items.length > 0) {
                     itemsHtml = order.items.map(i => `
-                        <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px dashed rgba(255,255,255,0.05); font-size:0.9rem;">
+                        <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px dashed var(--border); font-size:0.88rem;">
                             <span>${i.menuItemName || 'Dish'} <strong>x${i.quantity}</strong></span>
-                            <span style="color:var(--accent-gold);">Rs. ${(i.unitPrice * i.quantity).toFixed(2)}</span>
+                            <span style="color:var(--primary); font-weight:600;">Rs. ${(i.unitPrice * i.quantity).toFixed(2)}</span>
                         </div>
                     `).join('');
                 }
 
                 card.innerHTML = `
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:5px;">
                         <div>
-                            <strong style="color:var(--accent-gold); font-size:1.1rem;">ORDER #${order.id || order.orderId}</strong>
-                            <small style="color:var(--text-muted); margin-left:10px;">Customer: ${order.buyerName || 'Valued Customer'}</small>
+                            <strong style="color:var(--primary); font-size:1.05rem;">ORDER #${order.id || order.orderId}</strong>
+                            <small style="color:var(--text-muted); display:block;">Customer: ${order.buyerName || 'Valued Customer'}</small>
                         </div>
                         <span class="status-badge status-${order.status || 'PENDING'}">${order.status || 'PENDING'}</span>
                     </div>
 
-                    <div style="margin: 10px 0; background: rgba(255,255,255,0.02); padding: 10px; border-radius: 8px;">
-                        <strong style="font-size:0.85rem; color:var(--text-muted); text-transform:uppercase;">Ordered Dishes:</strong>
+                    <div style="margin: 8px 0; background: #fff; padding: 8px; border-radius: 6px; border:1px solid var(--border);">
+                        <strong style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase;">Ordered Dishes:</strong>
                         ${itemsHtml}
                     </div>
 
-                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:10px; font-size:0.88rem; color:var(--text-muted); margin-bottom:12px;">
-                        <div>📍 <strong>Delivery Address:</strong><br>${order.deliveryAddress || 'N/A'}</div>
+                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:8px; font-size:0.85rem; color:var(--text-muted); margin-bottom:10px;">
+                        <div>📍 <strong>Address:</strong><br>${order.deliveryAddress || 'N/A'}</div>
                         <div>📞 <strong>Phone:</strong><br>${order.customerPhone || 'N/A'}</div>
-                        <div>💳 <strong>Payment:</strong><br>${order.paymentMethod || 'Online'} (${order.paymentStatus || 'SUCCESS'})</div>
-                        <div>💰 <strong>Total:</strong><br><strong style="color:#fff; font-size:1.1rem;">Rs. ${parseFloat(order.totalAmount || order.total || 0).toFixed(2)}</strong></div>
+                        <div>💳 <strong>Payment:</strong><br>${order.paymentMethod || 'Online'}</div>
+                        <div>💰 <strong>Total:</strong><br><strong style="color:var(--text-main); font-size:1rem;">Rs. ${parseFloat(order.totalAmount || order.total || 0).toFixed(2)}</strong></div>
                     </div>
 
-                    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
-                        <button onclick="updateStatus(${order.id || order.orderId}, 'PREPARING')" class="btn-outline-sm" style="background:rgba(59,130,246,0.2); color:#3b82f6; border-color:#3b82f6;">Mark Preparing</button>
-                        <button onclick="updateStatus(${order.id || order.orderId}, 'OUT_FOR_DELIVERY')" class="btn-outline-sm" style="background:rgba(168,85,247,0.2); color:#a855f7; border-color:#a855f7;">Out for Delivery</button>
-                        <button onclick="updateStatus(${order.id || order.orderId}, 'DELIVERED')" class="btn-outline-sm" style="background:rgba(16,185,129,0.2); color:#10b981; border-color:#10b981;">Mark Delivered</button>
-                        <button onclick="updateStatus(${order.id || order.orderId}, 'CANCELLED')" class="btn-outline-sm" style="background:rgba(239,68,68,0.2); color:#ef4444; border-color:#ef4444;">Cancel Order</button>
+                    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;">
+                        <button onclick="updateStatus(${order.id || order.orderId}, 'PREPARING')" class="btn-outline-sm" style="color:#2563eb; border-color:#bfdbfe;">Preparing</button>
+                        <button onclick="updateStatus(${order.id || order.orderId}, 'OUT_FOR_DELIVERY')" class="btn-outline-sm" style="color:#9333ea; border-color:#e9d5ff;">Out for Delivery</button>
+                        <button onclick="updateStatus(${order.id || order.orderId}, 'DELIVERED')" class="btn-outline-sm" style="color:#166534; border-color:#bbf7d0;">Delivered</button>
+                        <button onclick="updateStatus(${order.id || order.orderId}, 'CANCELLED')" class="btn-outline-sm" style="color:#991b1b; border-color:#fecaca;">Cancel</button>
                     </div>
                 `;
                 container.appendChild(card);
@@ -228,18 +232,19 @@
             }
 
             let html = `
-                <table class="editable-table">
-                    <thead>
-                        <tr>
-                            <th>Dish Name</th>
-                            <th>Category</th>
-                            <th>Price (Rs.)</th>
-                            <th>Stock Qty</th>
-                            <th>Status</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+                <div class="table-responsive">
+                    <table class="editable-table">
+                        <thead>
+                            <tr>
+                                <th>Dish Name</th>
+                                <th>Category</th>
+                                <th>Price (Rs.)</th>
+                                <th>Stock Qty</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
             `;
 
             result.data.forEach(item => {
@@ -248,10 +253,10 @@
                     <tr>
                         <td><input type="text" id="name_${item.id}" class="form-input-sm" value="${item.name || ''}"></td>
                         <td style="color: var(--text-muted); font-size: 0.85rem;">${item.category || 'Mains'}</td>
-                        <td><input type="number" step="0.01" id="price_${item.id}" class="form-input-sm" style="width:100px;" value="${item.price || 0}"></td>
-                        <td><input type="number" id="stock_${item.id}" class="form-input-sm" style="width:80px;" value="${item.stockQty || 0}"></td>
+                        <td><input type="number" step="0.01" id="price_${item.id}" class="form-input-sm" style="width:80px;" value="${item.price || 0}"></td>
+                        <td><input type="number" id="stock_${item.id}" class="form-input-sm" style="width:60px;" value="${item.stockQty || 0}"></td>
                         <td>
-                            <label style="cursor:pointer; font-size:0.85rem;">
+                            <label style="cursor:pointer; font-size:0.85rem; white-space:nowrap;">
                                 <input type="checkbox" id="avail_${item.id}" ${availChecked}> In Stock
                             </label>
                         </td>
@@ -262,7 +267,7 @@
                 `;
             });
 
-            html += `</tbody></table>`;
+            html += `</tbody></table></div>`;
             container.innerHTML = html;
         } catch (err) {
             console.error('Error fetching menu items:', err);

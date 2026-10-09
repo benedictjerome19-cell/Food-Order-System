@@ -22,6 +22,7 @@ body {
     background: var(--bg-main);
     color: var(--text-main);
     line-height: 1.5;
+    overflow-x: hidden;
 }
 
 a {
@@ -49,18 +50,18 @@ h1, h2, h3 { color: #0f172a; margin-bottom: 0.5rem; }
     cursor: pointer;
     font-weight: 600;
     text-align: center;
-    transition: background-color 0.2s; /* Simple color transition only */
+    transition: background-color 0.2s;
 }
 .btn:disabled { opacity: 0.6; cursor: not-allowed; }
 .btn-primary { background: var(--primary); color: #fff; width: 100%; }
 .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
-.btn-outline-sm { background: transparent; border: 1px solid var(--border); padding: 0.4rem 0.8rem; font-size: 0.85rem; border-radius: 6px; }
+.btn-outline-sm { background: transparent; border: 1px solid var(--border); padding: 0.4rem 0.8rem; font-size: 0.85rem; border-radius: 6px; white-space: nowrap; }
 .btn-outline-sm:hover { background: #f1f5f9; }
 .btn-add { border: 1px solid var(--primary); background: transparent; color: var(--primary); width: 100%; padding: 0.5rem; border-radius: 6px; margin-top: 1rem; }
 .btn-add:hover:not(:disabled) { background: var(--primary); color: #fff; }
 
 /* =====================================================
-   NAVIGATION
+   NAVIGATION (MOBILE RESPONSIVE)
    ===================================================== */
 .navbar {
     display: flex;
@@ -69,9 +70,11 @@ h1, h2, h3 { color: #0f172a; margin-bottom: 0.5rem; }
     padding: 1rem 5%;
     background: var(--bg-card);
     border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 0.75rem;
 }
 .brand { font-size: 1.25rem; font-weight: bold; display: flex; align-items: center; gap: 0.5rem; }
-.nav-right { display: flex; align-items: center; gap: 1rem; }
+.nav-right { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
 .welcome-badge { display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; }
 .welcome-avatar { background: #e2e8f0; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; }
 
@@ -91,8 +94,7 @@ h1, h2, h3 { color: #0f172a; margin-bottom: 0.5rem; }
    LAYOUT (MAIN, CART, AUTH)
    ===================================================== */
 .main-layout { display: grid; grid-template-columns: 1fr 320px; gap: 2rem; padding: 2rem 5%; max-width: 1400px; margin: 0 auto; }
-@media (max-width: 900px) { .main-layout { grid-template-columns: 1fr; } }
-.auth-container { display: flex; justify-content: center; padding: 4rem 1rem; }
+.auth-container { display: flex; justify-content: center; padding: 2rem 1rem; }
 .auth-card { background: var(--bg-card); padding: 2rem; border-radius: 8px; width: 100%; max-width: 400px; border: 1px solid var(--border); }
 .auth-header { text-align: center; margin-bottom: 1.5rem; }
 .auth-footer { text-align: center; margin-top: 1.5rem; font-size: 0.9rem; color: var(--text-muted); }
@@ -104,18 +106,18 @@ h1, h2, h3 { color: #0f172a; margin-bottom: 0.5rem; }
    CATEGORIES & AI
    ===================================================== */
 .category-section { border-bottom: 1px solid var(--border); background: var(--bg-card); }
-.category-tabs { display: flex; gap: 0.75rem; padding: 1rem 5%; overflow-x: auto; max-width: 1400px; margin: 0 auto; }
+.category-tabs { display: flex; gap: 0.75rem; padding: 1rem 5%; overflow-x: auto; max-width: 1400px; margin: 0 auto; -webkit-overflow-scrolling: touch; }
 .category-tab { padding: 0.5rem 1rem; border: 1px solid var(--border); border-radius: 20px; background: transparent; cursor: pointer; white-space: nowrap; font-size: 0.9rem; }
 .category-tab.active { background: var(--text-main); color: #fff; border-color: var(--text-main); }
 .ai-assistant-card { background: #f0fdf4; border: 1px solid #bbf7d0; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem; }
 .ai-header { display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem; }
-.ai-input-wrapper { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
-.ai-input { flex: 1; padding: 0.6rem; border: 1px solid var(--border); border-radius: 6px; }
+.ai-input-wrapper { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+.ai-input { flex: 1; min-width: 200px; padding: 0.6rem; border: 1px solid var(--border); border-radius: 6px; }
 .ai-quick-prompts { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .ai-chip { background: #fff; border: 1px solid var(--border); padding: 0.3rem 0.6rem; border-radius: 16px; font-size: 0.8rem; cursor: pointer; }
 
 /* =====================================================
-   FOOD CARDS (STATIC 2D - AS REQUESTED)
+   FOOD CARDS
    ===================================================== */
 .menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1.5rem; }
 .menu-card {
@@ -150,9 +152,9 @@ h1, h2, h3 { color: #0f172a; margin-bottom: 0.5rem; }
 /* =====================================================
    MODALS (PAYMENT & SUCCESS)
    ===================================================== */
-.modal-overlay, .success-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; z-index: 100; }
+.modal-overlay, .success-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; z-index: 100; padding: 1rem; }
 .modal-overlay.active, .success-overlay.active { display: flex; }
-.modal { background: var(--bg-card); padding: 1.5rem; border-radius: 8px; width: 100%; max-width: 450px; }
+.modal { background: var(--bg-card); padding: 1.5rem; border-radius: 8px; width: 100%; max-width: 450px; max-height: 90vh; overflow-y: auto; }
 .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
 .modal-close { background: none; border: none; font-size: 1.2rem; cursor: pointer; }
 .payment-total-banner { background: #f8fafc; border: 1px solid var(--border); padding: 1rem; border-radius: 6px; display: flex; justify-content: space-between; font-size: 1.1rem; margin-bottom: 1rem; }
@@ -160,15 +162,31 @@ h1, h2, h3 { color: #0f172a; margin-bottom: 0.5rem; }
 .payment-option { display: flex; align-items: center; padding: 1rem; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; background: var(--bg-card); }
 .payment-option.selected { border-color: var(--primary); background: #fff7ed; }
 .pay-icon { font-size: 1.5rem; margin-right: 1rem; }
-.pay-info flex { 1; }
 .pay-check { margin-left: auto; color: var(--primary); font-weight: bold; }
-.pay-detail-box, .upi-box, .card-preview { background: #f8fafc; border: 1px solid var(--border); padding: 1rem; border-radius: 6px; display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
-.success-box { background: var(--bg-card); padding: 3rem; border-radius: 8px; text-align: center; border: 1px solid var(--border); }
+.pay-detail-box, .upi-box, .card-preview { background: #f8fafc; border: 1px solid var(--border); padding: 1rem; border-radius: 6px; display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
+.success-box { background: var(--bg-card); padding: 2rem; border-radius: 8px; text-align: center; border: 1px solid var(--border); max-width: 400px; width: 100%; }
 .success-icon { font-size: 3rem; margin-bottom: 1rem; }
+
+/* =====================================================
+   RESPONSIVE MEDIA QUERIES FOR PHONES
+   ===================================================== */
+@media (max-width: 900px) {
+    .main-layout { grid-template-columns: 1fr; padding: 1rem; }
+    .cart-panel { position: static; margin-top: 1.5rem; }
+}
+
+@media (max-width: 600px) {
+    .navbar { padding: 0.75rem 1rem; }
+    .brand { font-size: 1.1rem; }
+    .nav-right { width: 100%; justify-content: space-between; }
+    .hero-banner { padding: 2rem 1rem; }
+    .menu-grid { grid-template-columns: 1fr; }
+    .auth-card { padding: 1.5rem; }
+}
 
 /* =====================================================
    MISCELLANEOUS
    ===================================================== */
-#welcomeToast { position: fixed; bottom: 20px; right: 20px; background: var(--text-main); color: #fff; padding: 1rem; border-radius: 6px; transition: opacity 0.4s; z-index: 99; }
+#welcomeToast { position: fixed; bottom: 20px; right: 20px; background: var(--text-main); color: #fff; padding: 1rem; border-radius: 6px; transition: opacity 0.4s; z-index: 99; max-width: 90vw; }
 #welcomeToast.hide { opacity: 0; pointer-events: none; }
 .loading-spinner { grid-column: 1 / -1; text-align: center; padding: 3rem; color: var(--text-muted); }

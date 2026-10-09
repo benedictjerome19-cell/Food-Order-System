@@ -12,13 +12,13 @@ public class DBConnectionManager {
 
     static {
         try {
+            // Explicitly load the PostgreSQL driver to prevent "No suitable driver"
+            Class.forName("org.postgresql.Driver");
+
             HikariConfig config = new HikariConfig();
 
-            // Correctly look up the environment variable key name set on Render
-            String databaseUrl = System.getenv("postgresql://benedictjeromemart_db_user:3hAmYmzSSwaSTy9mDgUO7bs9AgiEsrQ4@dpg-dan44m142hec73d535bg-a/benedictjeromemart_db");
-            if (databaseUrl == null || databaseUrl.isEmpty()) {
-                databaseUrl = System.getenv("jdbc:postgresql://localhost:5432/benedictjeromemart");
-            }
+            // Look up the standard environment variable name used by deployment platforms (like Render)
+            String databaseUrl = System.getenv("DATABASE_URL");
 
             if (databaseUrl != null && !databaseUrl.isEmpty()) {
                 // Parse Render's postgres:// or postgresql:// URL format for JDBC
@@ -54,6 +54,7 @@ public class DBConnectionManager {
             config.setConnectionTimeout(30000);
 
             dataSource = new HikariDataSource(config);
+            System.out.println("[DB] PostgreSQL Connection Pool initialized successfully!");
         } catch (Exception e) {
             e.printStackTrace();
             throw new RuntimeException("Failed to initialize database connection pool.", e);
