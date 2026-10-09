@@ -1,6 +1,5 @@
 package com.benedictjeromemart.util;
 
-import java.net.URI;
 import java.sql.Connection;
 import java.sql.SQLException;
 
@@ -12,38 +11,29 @@ public class DBConnectionManager {
 
     static {
         try {
-            // Explicitly load the PostgreSQL driver to prevent "No suitable driver"
+            // Explicitly load the PostgreSQL driver to prevent "No suitable driver" errors
             Class.forName("org.postgresql.Driver");
 
             HikariConfig config = new HikariConfig();
 
-            // Look up the standard environment variable name used by deployment platforms (like Render)
+            // Look up the standard environment variable name used by Render / Supabase
             String databaseUrl = System.getenv("DATABASE_URL");
 
-            if (databaseUrl != null && !databaseUrl.isEmpty()) {
-                // Parse Render's postgres:// or postgresql:// URL format for JDBC
-                if (databaseUrl.startsWith("postgres://") || databaseUrl.startsWith("postgresql://")) {
-                    URI dbUri = new URI(databaseUrl.replace("postgresql://", "postgres://"));
-                    String userInfo = dbUri.getUserInfo();
-                    
-                    if (userInfo != null && userInfo.contains(":")) {
-                        String username = userInfo.split(":")[0];
-                        String password = userInfo.split(":")[1];
-                        int port = dbUri.getPort() == -1 ? 5432 : dbUri.getPort();
-                        String jdbcUrl = "jdbc:postgresql://" + dbUri.getHost() + ":" + port + dbUri.getPath();
-
-                        config.setJdbcUrl(jdbcUrl);
-                        config.setUsername(username);
-                        config.setPassword(password);
-                    } else {
-                        config.setJdbcUrl(databaseUrl);
-                    }
-                } else {
-                    config.setJdbcUrl(databaseUrl);
+            if (databaseUrl != null && !databaseUrl.trim().isEmpty()) {
+                databaseUrl = databaseUrl.trim();
+                
+                // Convert Render or Supabase URL format directly to JDBC format
+                if (databaseUrl.startsWith("postgres://")) {
+                    databaseUrl = databaseUrl.replace("postgres://", "jdbc:postgresql://");
+                } else if (databaseUrl.startsWith("postgresql://")) {
+                    databaseUrl = databaseUrl.replace("postgresql://", "jdbc:postgresql://");
                 }
+                
+                // Set the JDBC URL (PostgreSQL driver natively parses embedded credentials & percent-encoding)
+                config.setJdbcUrl(databaseUrl);
             } else {
                 // Local Development Fallback
-                config.setJdbcUrl("jdbc:postgresql://localhost:5432/benedictjeromemart");
+                config.setJdbcUrl("jdbc:postgresql://localhost:5432/postgres");
                 config.setUsername("postgres");
                 config.setPassword("Btechaids@2008");
             }
