@@ -38,7 +38,7 @@ public class DBConnectionManager {
                 config.setJdbcUrl(databaseUrl);
             } else {
                 // Local Development Fallback
-                config.setJdbcUrl("jdbc:postgresql://localhost:5432/postgres?sslmode=disable");
+                config.setJdbcUrl("jdbc:postgresql://localhost:5432/benedictjeromemart?sslmode=disable");
                 config.setUsername("postgres");
                 config.setPassword("Btechaids@2008");
             }

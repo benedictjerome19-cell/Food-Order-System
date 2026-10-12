@@ -17,4 +17,17 @@ public class PasswordUtil {
     public static boolean verify(String password, String hashed) {
         return check(password, hashed);
     }
+
+    public static void main(String[] args) {
+        if (args.length == 0) {
+            System.out.println("Usage: java com.benedictjeromemart.util.PasswordUtil <password>");
+            return;
+        }
+        String password = args[0];
+        String hashed = hash(password);
+        System.out.println("==================================================");
+        System.out.println("Plain Password:  " + password);
+        System.out.println("BCrypt Hash:     " + hashed);
+        System.out.println("==================================================");
+    }
 }

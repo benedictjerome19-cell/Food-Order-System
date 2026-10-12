@@ -98,7 +98,7 @@
     </dependencies>
 
     <build>
-        <finalName>Food-Order-System</finalName>
+        <finalName>benedictjeromemart</finalName>
         <plugins>
             <!-- Compiler Plugin -->
             <plugin>
