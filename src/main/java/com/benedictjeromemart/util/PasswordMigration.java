@@ -15,8 +15,8 @@ public class PasswordMigration {
                 int id = rs.getInt("id");
                 String pwd = rs.getString("password");
                 
-                // If the password does not start with BCrypt prefix '$2a$', it is plain text
-                if (pwd != null && !pwd.startsWith("$2a$")) {
+                // If the password does not start with any standard BCrypt prefix, it is plain text
+                if (pwd != null && !pwd.startsWith("$2a$") && !pwd.startsWith("$2b$") && !pwd.startsWith("$2y$")) {
                     String hashed = PasswordUtil.hash(pwd);
                     try (PreparedStatement pstmt = conn.prepareStatement("UPDATE users SET password = ? WHERE id = ?")) {
                         pstmt.setString(1, hashed);

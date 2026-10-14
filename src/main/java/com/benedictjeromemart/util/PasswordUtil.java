@@ -8,7 +8,7 @@ public class PasswordUtil {
     }
 
     public static boolean check(String password, String hashed) {
-        if (hashed == null || !hashed.startsWith("$2a$")) {
+        if (hashed == null || (!hashed.startsWith("$2a$") && !hashed.startsWith("$2b$") && !hashed.startsWith("$2y$"))) {
             return false;
         }
         return BCrypt.checkpw(password, hashed);
