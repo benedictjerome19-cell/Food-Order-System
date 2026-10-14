@@ -1,65 +1,23 @@
-see the data base s1
+# 1. Navigate to your project root directory
+cd D:\benedictmart\benedictmart\jerome_zom
 
-Get-Process -Name "java" -ErrorAction SilentlyContinue | Stop-Process -Force
+# 2. Clean and build the project with Maven
+mvn clean package
 
+# 3. Set the Tomcat home environment variable
+$env:CATALINA_HOME="D:\benedictmart\benedictmart\jerome_zom\tomcat"
+
+# 4. Stop Tomcat gracefully
+& "$env:CATALINA_HOME\bin\shutdown.bat"
 Start-Sleep -Seconds 3
 
-jdbc url : 
+# 5. Clean up old webapp deployments and old war files
+Remove-Item -Recurse -Force "$env:CATALINA_HOME\webapps\benedictjeromemart" -ErrorAction SilentlyContinue
+Remove-Item -Force "$env:CATALINA_HOME\webapps\benedictjeromemart.war" -ErrorAction SilentlyContinue
+Remove-Item -Force "$env:CATALINA_HOME\webapps\Food-Order-System.war" -ErrorAction SilentlyContinue
 
-jdbc:h2:C:/Users/DELL USER/Downloads/java/project_3/benedictmart/jerome_zom/data/benedictjeromemart;AUTO_SERVER=TRUE
+# 6. Copy the newly built WAR file into Tomcat webapps and rename it to your app path
+Copy-Item "D:\benedictmart\benedictmart\jerome_zom\target\benedictjeromemart.war" -Destination "$env:CATALINA_HOME\webapps\benedictjeromemart.war" -Force
 
-
-PS C:\Users\DELL USER\Downloads\java\project_3\benedictmart\jerome_zom> 
-
-java -cp "target\benedictjeromemart\WEB-INF\lib\h2-2.2.224.jar" org.h2.tools.Server -web -browser
-Web Console server running at http://10.122.240.196:8082 (only local connections)
-
---home page
-
-D:\benedictmart\benedictmart\jerome_zom\src\main\webapp\home.jsp
-
-
-
-cd D:\benedictmart\benedictmart\jerome_zom
-mvn clean package
-cd D:\benedictmart\benedictmart\jerome_zom\tomcat\bin
-.\shutdown.bat
-
-
-Remove-Item -Recurse -Force "D:\benedictmart\benedictmart\jerome_zom\tomcat\webapps\benedictjeromemart" -ErrorAction SilentlyContinue
-Copy-Item "D:\benedictmart\benedictmart\jerome_zom\target\benedictjeromemart.war" -Destination "D:\benedictmart\benedictmart\jerome_zom\tomcat\webapps\" -Force
-.\startup.bat
-
-
-
-http://localhost:8080/benedictjeromemart/home.jsp
-
-
-
---for deploye
-
-
-## Terminal commands — rebuild, redeploy, and run
-
-```
-cd D:\benedictmart\benedictmart\jerome_zom
-mvn clean package
-```
-**Confirm `BUILD SUCCESS` before continuing.**
-
-```
-cd D:\benedictmart\benedictmart\jerome_zom\tomcat\bin
-.\shutdown.bat
-```
-Wait 5 seconds.
-
-```
-Remove-Item -Recurse -Force "D:\benedictmart\benedictmart\jerome_zom\tomcat\webapps\benedictjeromemart" -ErrorAction SilentlyContinue
-Copy-Item "D:\benedictmart\benedictmart\jerome_zom\target\benedictjeromemart.war" -Destination "D:\benedictmart\benedictmart\jerome_zom\tomcat\webapps\" -Force
-.\startup.bat
-```
-
-Then test:
-```
-http://localhost:8080/benedictjeromemart/home.jsp
-```
+# 7. Start Tomcat
+& "$env:CATALINA_HOME\bin\startup.bat"

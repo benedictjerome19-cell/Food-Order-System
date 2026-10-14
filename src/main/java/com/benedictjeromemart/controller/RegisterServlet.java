@@ -13,6 +13,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import com.benedictjeromemart.util.DBConnectionManager;
+import com.benedictjeromemart.util.PasswordUtil;
 
 @WebServlet(name = "RegisterServlet", urlPatterns = {"/register", "/api/v1/register"})
 public class RegisterServlet extends HttpServlet {
@@ -43,6 +44,9 @@ public class RegisterServlet extends HttpServlet {
             return;
         }
 
+        // Hash the password using BCrypt before storing it
+        String hashedPassword = PasswordUtil.hash(password);
+
         String checkSql = "SELECT id FROM users WHERE email = ?";
         String insertSql = "INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)";
 
@@ -59,11 +63,11 @@ public class RegisterServlet extends HttpServlet {
                 }
             }
 
-            // Insert new user into database
+            // Insert new user into database with the hashed password
             try (PreparedStatement insertStmt = conn.prepareStatement(insertSql)) {
                 insertStmt.setString(1, name != null ? name : "User");
                 insertStmt.setString(2, email);
-                insertStmt.setString(3, password);
+                insertStmt.setString(3, hashedPassword); // <-- Using hashed password here
                 insertStmt.setString(4, role);
                 insertStmt.executeUpdate();
             }
