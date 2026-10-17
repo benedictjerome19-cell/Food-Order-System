@@ -3,5 +3,5 @@
 PORT="${PORT:-10000}"
 sed -i "s/port=\"8080\"/port=\"$PORT\"/g" /usr/local/tomcat/conf/server.xml
 
-# Start Tomcat
-catalina.sh run
+# Start Tomcat with exec to handle lifecycle signals properly
+exec catalina.sh run

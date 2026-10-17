@@ -21,7 +21,7 @@ import com.benedictjeromemart.model.MenuItem;
 import com.benedictjeromemart.model.Restaurant;
 import com.benedictjeromemart.util.GsonUtil;
 
-@WebServlet("/api/v1/owner/menu-items")
+@WebServlet(name = "ManageMenuServlet", urlPatterns = {"/api/v1/owner/menu-items", "/api/v1/manage-menu"})
 public class ManageMenuServlet extends HttpServlet {
 
     private final RestaurantDAO restaurantDAO = new RestaurantDAOImpl();

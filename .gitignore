@@ -1,8 +1,5 @@
-﻿target/
-*.mv.db
-*.trace.db
-data/
-src/main/resources/config.properties
+# Build output and IDE
+target/
 .idea/
 *.iml
 .vscode/
@@ -11,20 +8,22 @@ src/main/resources/config.properties
 .settings/
 .DS_Store
 Thumbs.db
-
-tomcat/
-target/
 *.log
-
-data/
-
-data/
-
-src/main/resources/db.properties
-backup.sql
-data-postgres.sql
-debug.txt
-host.txt
 *.zip
+
+# Local server & runtime database folders
 tomcat/
 data/
+*.mv.db
+*.trace.db
+
+# Sensitive local configuration credentials
+src/main/resources/config.properties
+src/main/resources/db.properties
+
+# Local root artifacts & logs (anchored to root so resource SQL files are tracked)
+/backup.sql
+/data-postgres.sql
+/debug.txt
+/host.txt
+"h origin master*"

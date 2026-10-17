@@ -13,7 +13,7 @@ RUN mvn clean package -DskipTests
 FROM tomcat:9.0-jdk17
 
 # Remove default Tomcat webapps
-RUN rm -rf /usr/local/tomcat/webapps/ROOT /usr/local/tomcat/webapps/examples /usr/local/tomcat/webapps/docs
+RUN rm -rf /usr/local/tomcat/webapps/*
 
 # Explicitly copy and rename the built WAR to ROOT.war for root path access
 COPY --from=build /app/target/benedictjeromemart.war /usr/local/tomcat/webapps/ROOT.war

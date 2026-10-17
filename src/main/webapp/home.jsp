@@ -41,6 +41,7 @@
     <div class="nav-right">
         <a href="orders.jsp" class="btn btn-outline-sm">My Orders</a>
         <% if (isOwner) { %>
+        <a href="owner-dashboard.jsp" class="btn btn-outline-sm">Owner Dashboard</a>
         <a href="manage-menu.jsp" class="btn btn-outline-sm">Manage Menu</a>
         <% } %>
         <div class="welcome-badge">

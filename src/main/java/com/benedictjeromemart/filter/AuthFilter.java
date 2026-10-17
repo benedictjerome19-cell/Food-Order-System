@@ -18,7 +18,9 @@ public class AuthFilter implements Filter {
 
     // Endpoints that don't require login
     private static final String[] PUBLIC_PATHS = {
-        "/api/v1/register", "/api/v1/login", "/api/v1/health", "/api/v1/menu-items", "/api/v1/restaurants", "/api/chat", "/api/v1/chat"
+        "/api/v1/register", "/api/v1/login", "/api/v1/health", "/health", "/api/health",
+        "/api/v1/menu-items", "/api/v1/restaurants", "/api/chat", "/api/v1/chat",
+        "/api/v1/debug/db"
     };
 
     @Override
@@ -32,11 +34,15 @@ public class AuthFilter implements Filter {
 
         HttpServletRequest req = (HttpServletRequest) request;
         HttpServletResponse resp = (HttpServletResponse) response;
-        String path = req.getRequestURI();
+        String uri = req.getRequestURI();
+        String contextPath = req.getContextPath();
+        String path = (contextPath != null && !contextPath.isEmpty() && uri.startsWith(contextPath))
+                ? uri.substring(contextPath.length())
+                : uri;
 
         boolean isPublic = false;
         for (String publicPath : PUBLIC_PATHS) {
-            if (path.endsWith(publicPath)) {
+            if (path.equals(publicPath) || path.startsWith(publicPath + "/") || uri.endsWith(publicPath)) {
                 isPublic = true;
                 break;
             }

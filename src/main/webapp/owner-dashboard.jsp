@@ -286,7 +286,7 @@
         formData.append('stockQty', stock);
         formData.append('isAvailable', available);
 
-        const res = await fetch(ctx + '/api/v1/manage-menu', {
+        const res = await fetch(ctx + '/api/v1/owner/menu-items', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: formData

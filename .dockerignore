@@ -2,11 +2,19 @@ target
 .git
 .idea
 *.iml
+.vscode
 
 tomcat
 data
 *.zip
-backup.sql
-data-postgres.sql
-debug.txt
+*.log
+
+# Sensitive local configurations
 src/main/resources/db.properties
+src/main/resources/config.properties
+
+# Local root artifacts & logs
+/backup.sql
+/data-postgres.sql
+/debug.txt
+/host.txt
