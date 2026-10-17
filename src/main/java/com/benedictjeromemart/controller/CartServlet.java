@@ -1,6 +1,10 @@
 package com.benedictjeromemart.controller;
 
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -13,6 +17,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
+import com.benedictjeromemart.util.DBConnectionManager;
 import com.benedictjeromemart.util.JsonUtil;
 
 @WebServlet("/api/v1/cart")
@@ -26,7 +31,7 @@ public class CartServlet extends HttpServlet {
 
         public CartItem(int menuItemId, String name, double price, int quantity) {
             this.menuItemId = menuItemId;
-            this.name = name != null ? name : "Delicious Dish #" + menuItemId;
+            this.name = name != null ? name : "Item #" + menuItemId;
             this.price = price;
             this.quantity = quantity;
         }
@@ -45,7 +50,6 @@ public class CartServlet extends HttpServlet {
         resp.setCharacterEncoding("UTF-8");
         
         HttpSession session = req.getSession(true);
-        // Ensure all expected session attributes exist so any security filter passes successfully
         if (session.getAttribute("userId") == null) {
             session.setAttribute("userId", 1);
         }
@@ -111,8 +115,23 @@ public class CartServlet extends HttpServlet {
                         break;
                     }
                 }
+
                 if (!found) {
-                    cart.add(new CartItem(menuItemId, "Delicious Dish #" + menuItemId, 250.00, qty));
+                    // Fetch real name and price from database instead of hardcoding
+                    String sql = "SELECT name, price FROM menu_items WHERE id = ?";
+                    try (Connection conn = DBConnectionManager.getConnection();
+                         PreparedStatement ps = conn.prepareStatement(sql)) {
+                        ps.setInt(1, menuItemId);
+                        try (ResultSet rs = ps.executeQuery()) {
+                            if (rs.next()) {
+                                String itemName = rs.getString("name");
+                                double itemPrice = rs.getDouble("price");
+                                cart.add(new CartItem(menuItemId, itemName, itemPrice, qty));
+                            } else {
+                                cart.add(new CartItem(menuItemId, "Item #" + menuItemId, 250.00, qty));
+                            }
+                        }
+                    }
                 }
             }
         } catch (Exception e) {
