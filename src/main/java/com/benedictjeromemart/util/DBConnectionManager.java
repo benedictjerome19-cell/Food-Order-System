@@ -1,7 +1,6 @@
 package com.benedictjeromemart.util;
 
 import java.io.InputStream;
-import java.net.URI;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Properties;
@@ -16,6 +15,11 @@ public class DBConnectionManager {
     private static volatile HikariDataSource dataSource;
     private static final Object LOCK = new Object();
 
+    private static volatile boolean envUrlDetected = false;
+    private static volatile String lastConfiguredTarget = "none";
+    private static volatile String lastErrorMessage = null;
+    private static volatile String configuredUser = null;
+
     static {
         try {
             Class.forName("org.postgresql.Driver");
@@ -25,123 +29,159 @@ public class DBConnectionManager {
         initPool();
     }
 
-    private static void initPool() {
-        synchronized (LOCK) {
-            if (dataSource != null && !dataSource.isClosed()) {
-                return;
+    public static synchronized void initPool() {
+        if (dataSource != null && !dataSource.isClosed()) {
+            return;
+        }
+
+        try {
+            HikariConfig config = new HikariConfig();
+            config.setDriverClassName("org.postgresql.Driver");
+
+            // 1. Resolve connection URL from environment
+            String rawUrl = System.getenv("DATABASE_URL");
+            if (rawUrl == null || rawUrl.trim().isEmpty()) {
+                rawUrl = System.getenv("JDBC_DATABASE_URL");
+            }
+            if (rawUrl == null || rawUrl.trim().isEmpty()) {
+                rawUrl = System.getenv("DB_URL");
             }
 
-            try {
-                HikariConfig config = new HikariConfig();
-                config.setDriverClassName("org.postgresql.Driver");
-
-                // Check environment variables for cloud deployment (Render, Supabase, etc.)
-                String rawUrl = System.getenv("DATABASE_URL");
-                if (rawUrl == null || rawUrl.trim().isEmpty()) {
-                    rawUrl = System.getenv("JDBC_DATABASE_URL");
-                }
-                if (rawUrl == null || rawUrl.trim().isEmpty()) {
-                    rawUrl = System.getenv("DB_URL");
+            if (rawUrl != null && !rawUrl.trim().isEmpty()) {
+                envUrlDetected = true;
+                rawUrl = rawUrl.trim();
+                // Strip enclosing quotes if present
+                if ((rawUrl.startsWith("\"") && rawUrl.endsWith("\"")) || (rawUrl.startsWith("'") && rawUrl.endsWith("'"))) {
+                    rawUrl = rawUrl.substring(1, rawUrl.length() - 1).trim();
                 }
 
-                if (rawUrl != null && !rawUrl.trim().isEmpty()) {
-                    rawUrl = rawUrl.trim();
-                    LOGGER.info("[DB] Configuring PostgreSQL from environment URL...");
+                LOGGER.info("[DB] Environment database URL detected. Parsing configuration...");
 
-                    if (rawUrl.startsWith("postgres://") || rawUrl.startsWith("postgresql://")) {
-                        // Standard cloud connection URI: postgres://username:password@host:port/database
-                        URI uri = new URI(rawUrl);
-                        String userInfo = uri.getUserInfo();
-                        String username = null;
-                        String password = null;
-                        if (userInfo != null && !userInfo.isEmpty()) {
-                            String[] parts = userInfo.split(":", 2);
-                            username = parts[0];
-                            if (parts.length > 1) {
-                                password = parts[1];
-                            }
-                        }
+                // Parse standard URL: [scheme://][user[:password]@]host[:port][/dbname][?query]
+                String withoutPrefix = rawUrl;
+                if (withoutPrefix.startsWith("jdbc:postgresql://")) {
+                    withoutPrefix = withoutPrefix.substring("jdbc:postgresql://".length());
+                } else if (withoutPrefix.startsWith("postgresql://")) {
+                    withoutPrefix = withoutPrefix.substring("postgresql://".length());
+                } else if (withoutPrefix.startsWith("postgres://")) {
+                    withoutPrefix = withoutPrefix.substring("postgres://".length());
+                }
 
-                        String host = uri.getHost();
-                        int port = uri.getPort() > 0 ? uri.getPort() : 5432;
-                        String path = uri.getPath(); // e.g., /dbname
-                        String dbName = (path != null && path.length() > 1) ? path.substring(1) : "";
+                String queryParams = "";
+                int qIdx = withoutPrefix.indexOf('?');
+                if (qIdx != -1) {
+                    queryParams = withoutPrefix.substring(qIdx + 1);
+                    withoutPrefix = withoutPrefix.substring(0, qIdx);
+                }
 
-                        // Construct standard JDBC URL
-                        StringBuilder jdbcUrl = new StringBuilder("jdbc:postgresql://")
-                                .append(host)
-                                .append(":")
-                                .append(port)
-                                .append("/")
-                                .append(dbName);
-
-                        // SSL Requirement for cloud hosts (Render, Supabase, Neon, etc.)
-                        boolean isLocal = "localhost".equalsIgnoreCase(host) || "127.0.0.1".equals(host);
-                        String query = uri.getQuery();
-
-                        if (query != null && !query.isEmpty()) {
-                            jdbcUrl.append("?").append(query);
-                            if (!isLocal && !query.contains("sslmode=")) {
-                                jdbcUrl.append("&sslmode=require");
-                            }
-                        } else {
-                            if (!isLocal) {
-                                jdbcUrl.append("?sslmode=require");
-                            }
-                        }
-
-                        config.setJdbcUrl(jdbcUrl.toString());
-                        if (username != null && !username.isEmpty()) {
-                            config.setUsername(username);
-                        }
-                        if (password != null) {
-                            config.setPassword(password);
-                        }
-                        LOGGER.info("[DB] Configured JDBC URL: " + sanitizeJdbcUrl(jdbcUrl.toString()) + " with user: " + username);
-                    } else if (rawUrl.startsWith("jdbc:postgresql://")) {
-                        // Already a JDBC URL
-                        String jdbcUrl = rawUrl;
-                        if (!jdbcUrl.contains("localhost") && !jdbcUrl.contains("127.0.0.1") && !jdbcUrl.contains("sslmode=")) {
-                            jdbcUrl += (jdbcUrl.contains("?") ? "&" : "?") + "sslmode=require";
-                        }
-                        config.setJdbcUrl(jdbcUrl);
-                        String envUser = System.getenv("DB_USER") != null ? System.getenv("DB_USER") : System.getenv("DB_USERNAME");
-                        String envPass = System.getenv("DB_PASSWORD");
-                        if (envUser != null && !envUser.isEmpty()) config.setUsername(envUser);
-                        if (envPass != null) config.setPassword(envPass);
+                String username = null;
+                String password = null;
+                int atIdx = withoutPrefix.lastIndexOf('@');
+                if (atIdx != -1) {
+                    String userInfo = withoutPrefix.substring(0, atIdx);
+                    withoutPrefix = withoutPrefix.substring(atIdx + 1);
+                    int colonIdx = userInfo.indexOf(':');
+                    if (colonIdx != -1) {
+                        username = userInfo.substring(0, colonIdx);
+                        password = userInfo.substring(colonIdx + 1);
                     } else {
-                        config.setJdbcUrl(rawUrl);
+                        username = userInfo;
+                    }
+                }
+
+                String hostAndPort = withoutPrefix;
+                String dbName = "";
+                int slashIdx = withoutPrefix.indexOf('/');
+                if (slashIdx != -1) {
+                    hostAndPort = withoutPrefix.substring(0, slashIdx);
+                    dbName = withoutPrefix.substring(slashIdx + 1);
+                }
+
+                String host = hostAndPort;
+                int port = 5432;
+                int colonIdx = hostAndPort.lastIndexOf(':');
+                if (colonIdx != -1) {
+                    host = hostAndPort.substring(0, colonIdx);
+                    try {
+                        port = Integer.parseInt(hostAndPort.substring(colonIdx + 1));
+                    } catch (NumberFormatException ignored) {}
+                }
+
+                StringBuilder jdbcUrl = new StringBuilder("jdbc:postgresql://")
+                        .append(host)
+                        .append(":")
+                        .append(port)
+                        .append("/")
+                        .append(dbName);
+
+                boolean isLocal = "localhost".equalsIgnoreCase(host) || "127.0.0.1".equals(host);
+                if (queryParams.isEmpty()) {
+                    if (!isLocal) {
+                        jdbcUrl.append("?sslmode=require");
                     }
                 } else {
-                    // Local Development Fallback: try db.properties or config.properties
-                    Properties fileProps = loadLocalProperties();
-                    String localUrl = fileProps.getProperty("db.url", "jdbc:postgresql://localhost:5432/benedictjeromemart");
-                    String localUser = fileProps.getProperty("db.user", fileProps.getProperty("db.username", "postgres"));
-                    String localPass = fileProps.getProperty("db.password", "Btechaids@2008");
-
-                    if (!localUrl.contains("sslmode=")) {
-                        localUrl += (localUrl.contains("?") ? "&" : "?") + "sslmode=disable";
+                    jdbcUrl.append("?").append(queryParams);
+                    if (!isLocal && !queryParams.contains("sslmode=")) {
+                        jdbcUrl.append("&sslmode=require");
                     }
-
-                    config.setJdbcUrl(localUrl);
-                    config.setUsername(localUser);
-                    config.setPassword(localPass);
-                    LOGGER.info("[DB] Configured local database connection for " + localUser + " at " + localUrl);
                 }
 
-                // Pool optimization settings (well suited for cloud container instances)
-                config.setMaximumPoolSize(10);
-                config.setMinimumIdle(2);
-                config.setIdleTimeout(30000);
-                config.setConnectionTimeout(30000);
-                config.setMaxLifetime(1800000); // 30 minutes
-                config.setPoolName("BenedictHikariPool");
+                config.setJdbcUrl(jdbcUrl.toString());
 
-                dataSource = new HikariDataSource(config);
-                System.out.println("[DB] PostgreSQL Connection Pool initialized successfully!");
-            } catch (Exception e) {
-                LOGGER.log(Level.SEVERE, "[DB] Failed to initialize database connection pool: " + e.getMessage(), e);
+                if (username != null && !username.isEmpty()) {
+                    config.setUsername(username);
+                } else {
+                    String envUser = System.getenv("DB_USER") != null ? System.getenv("DB_USER") : System.getenv("DB_USERNAME");
+                    if (envUser != null) config.setUsername(envUser);
+                }
+
+                if (password != null) {
+                    config.setPassword(password);
+                } else {
+                    String envPass = System.getenv("DB_PASSWORD");
+                    if (envPass != null) config.setPassword(envPass);
+                }
+
+                configuredUser = config.getUsername();
+                lastConfiguredTarget = host + ":" + port + "/" + dbName;
+                LOGGER.info("[DB] Configured target: " + lastConfiguredTarget + ", user: " + configuredUser);
+            } else {
+                envUrlDetected = false;
+                // Local Development Fallback
+                Properties fileProps = loadLocalProperties();
+                String localUrl = fileProps.getProperty("db.url", "jdbc:postgresql://localhost:5432/benedictjeromemart");
+                String localUser = fileProps.getProperty("db.user", fileProps.getProperty("db.username", "postgres"));
+                String localPass = fileProps.getProperty("db.password", "Btechaids@2008");
+
+                if (!localUrl.contains("sslmode=")) {
+                    localUrl += (localUrl.contains("?") ? "&" : "?") + "sslmode=disable";
+                }
+
+                config.setJdbcUrl(localUrl);
+                config.setUsername(localUser);
+                config.setPassword(localPass);
+                configuredUser = localUser;
+                lastConfiguredTarget = "localhost:5432/benedictjeromemart";
+                LOGGER.info("[DB] Configured local database connection for " + localUser + " at " + localUrl);
             }
+
+            config.setMaximumPoolSize(10);
+            config.setMinimumIdle(2);
+            config.setIdleTimeout(30000);
+            config.setConnectionTimeout(15000);
+            config.setMaxLifetime(1800000);
+            config.setPoolName("BenedictHikariPool");
+
+            dataSource = new HikariDataSource(config);
+            lastErrorMessage = null;
+            System.out.println("[DB] PostgreSQL Connection Pool initialized successfully!");
+        } catch (Throwable t) {
+            String msg = t.getMessage();
+            if (t.getCause() != null) {
+                msg += " (Cause: " + t.getCause().getMessage() + ")";
+            }
+            lastErrorMessage = msg;
+            LOGGER.log(Level.SEVERE, "[DB] Failed to initialize database connection pool: " + lastErrorMessage, t);
         }
     }
 
@@ -158,17 +198,21 @@ public class DBConnectionManager {
         return props;
     }
 
-    private static String sanitizeJdbcUrl(String url) {
-        if (url == null) return null;
-        return url.replaceAll(":[^/@:]+@", ":***@");
-    }
-
     public static Connection getConnection() throws SQLException {
         if (dataSource == null || dataSource.isClosed()) {
             initPool();
         }
         if (dataSource == null) {
-            throw new SQLException("Database connection pool is not initialized. Please verify DATABASE_URL.");
+            if (!envUrlDetected) {
+                throw new SQLException(
+                    "DATABASE_URL environment variable is NOT set in Render. " +
+                    "Please go to your Render Web Service dashboard -> Environment tab -> Add 'DATABASE_URL' with your PostgreSQL connection string."
+                );
+            }
+            throw new SQLException(
+                "Cannot connect to PostgreSQL at [" + lastConfiguredTarget + "] as user [" + configuredUser + "]: " +
+                (lastErrorMessage != null ? lastErrorMessage : "Connection failed. Please verify credentials, host, and SSL settings.")
+            );
         }
         return dataSource.getConnection();
     }
@@ -178,6 +222,22 @@ public class DBConnectionManager {
             initPool();
         }
         return dataSource;
+    }
+
+    public static boolean isEnvUrlDetected() {
+        return envUrlDetected;
+    }
+
+    public static String getLastConfiguredTarget() {
+        return lastConfiguredTarget;
+    }
+
+    public static String getConfiguredUser() {
+        return configuredUser;
+    }
+
+    public static String getLastErrorMessage() {
+        return lastErrorMessage;
     }
 
     public static void closePool() {

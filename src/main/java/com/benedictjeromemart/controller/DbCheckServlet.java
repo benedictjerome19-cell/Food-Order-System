@@ -20,22 +20,28 @@ public class DbCheckServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         resp.setContentType("application/json");
+        resp.setCharacterEncoding("UTF-8");
         JsonObject result = new JsonObject();
+        result.addProperty("envUrlDetected", DBConnectionManager.isEnvUrlDetected());
+        result.addProperty("configuredTarget", DBConnectionManager.getLastConfiguredTarget());
+        result.addProperty("configuredUser", DBConnectionManager.getConfiguredUser());
+
         JsonArray tablesList = new JsonArray();
 
         try (Connection conn = DBConnectionManager.getConnection();
              Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery("SELECT table_name FROM information_schema.tables WHERE table_schema='public'")) {
-            
+             ResultSet rs = stmt.executeQuery("SELECT table_name FROM information_schema.tables WHERE table_schema='public' ORDER BY table_name")) {
+
             while (rs.next()) {
                 tablesList.add(rs.getString("table_name"));
             }
             result.addProperty("success", true);
             result.add("tables", tablesList);
-            result.addProperty("message", "Connected successfully to your Render PostgreSQL database!");
+            result.addProperty("message", "Connected successfully to PostgreSQL database!");
         } catch (Exception e) {
             result.addProperty("success", false);
             result.addProperty("error", e.getMessage());
+            result.addProperty("lastInitError", DBConnectionManager.getLastErrorMessage());
         }
 
         resp.getWriter().write(new Gson().toJson(result));

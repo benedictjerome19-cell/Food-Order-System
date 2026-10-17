@@ -96,7 +96,8 @@ public class LoginServlet extends HttpServlet {
             System.err.println("[DB] Login error: " + e.getMessage());
             e.printStackTrace();
             resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            resp.getWriter().write("{\"success\":false,\"error\":{\"message\":\"Database error: " + e.getMessage().replace("\"", "'") + "\"}}");
+            String safeMsg = e.getMessage() != null ? e.getMessage().replace("\"", "'").replace("\n", " ").replace("\r", " ") : "Unknown database error";
+            resp.getWriter().write("{\"success\":false,\"error\":{\"message\":\"" + safeMsg + "\"}}");
         }
     }
 }
