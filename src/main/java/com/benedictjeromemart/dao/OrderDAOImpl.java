@@ -214,7 +214,7 @@ public class OrderDAOImpl implements OrderDAO {
         String sql = "SELECT o.id as order_id, o.buyer_id, o.restaurant_id, o.status, o.total_amount, "
                    + "o.delivery_address, o.customer_phone, o.payment_method, o.payment_status, o.transaction_id, o.created_at, "
                    + "r.name as restaurant_name, "
-                   + "oi.menu_item_id as item_id, oi.quantity, oi.unit_price, oi.price, "
+                   + "oi.menu_item_id as item_id, oi.menu_item_id as menu_item_id, oi.quantity, oi.unit_price, oi.price, "
                    + "m.name as menu_item_name "
                    + "FROM orders o "
                    + "JOIN restaurants r ON o.restaurant_id = r.id "
