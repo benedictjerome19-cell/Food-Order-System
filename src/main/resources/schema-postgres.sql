@@ -88,3 +88,10 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_phone VARCHAR(30);
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_method VARCHAR(30);
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_status VARCHAR(20) DEFAULT 'PENDING';
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS transaction_id VARCHAR(100);
+
+-- Ensure both password and password_hash columns exist on users table for full backwards compatibility
+ALTER TABLE users ADD COLUMN IF NOT EXISTS password VARCHAR(255);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);
+UPDATE users SET password = password_hash WHERE password IS NULL AND password_hash IS NOT NULL;
+UPDATE users SET password_hash = password WHERE password_hash IS NULL AND password IS NOT NULL;
+ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;

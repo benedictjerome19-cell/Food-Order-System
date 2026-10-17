@@ -34,7 +34,8 @@ public class LoginServlet extends HttpServlet {
             return;
         }
 
-        String sql = "SELECT id, name, email, password, role FROM users WHERE email = ?";
+        // Select all columns so query succeeds whether column is named password or password_hash
+        String sql = "SELECT * FROM users WHERE email = ?";
 
         try (Connection conn = DBConnectionManager.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -43,7 +44,15 @@ public class LoginServlet extends HttpServlet {
 
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    String dbPassword = rs.getString("password");
+                    String dbPassword = null;
+                    try {
+                        dbPassword = rs.getString("password");
+                    } catch (SQLException ignored) {}
+                    if (dbPassword == null || dbPassword.trim().isEmpty()) {
+                        try {
+                            dbPassword = rs.getString("password_hash");
+                        } catch (SQLException ignored) {}
+                    }
                     boolean passwordMatch = false;
 
                     // Support both plain-text passwords and BCrypt hashes[cite: 14]
